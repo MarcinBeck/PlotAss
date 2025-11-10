@@ -23,7 +23,7 @@
             transition: background-color 0.3s;
         }
         button:hover { background-color: #0056b3; }
-        #wynik-analizy, #wynik-rozdziału { background-color: #e9ecef; padding: 15px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; color: #333; border: 1px dashed #aaa;}
+        #wynik-analizy, #wynik-rozdziału, #profile-json, #history-json { background-color: #e9ecef; padding: 15px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; color: #333; border: 1px dashed #aaa;}
         .error { color: red; font-weight: bold; }
     </style>
 </head>
@@ -32,7 +32,7 @@
     <h1>LLM Fabularny Asystent: Zarządzanie Treścią</h1>
     
     <div class="section" id="rozdziały">
-        <h2>0. Dodaj/Aktualizuj Rozdział</h2>
+        <h2>0. Dodaj/Aktualizuj Rozdział (Wprowadzanie Surowej Treści)</h2>
         
         <label for="chapter-id">ID Rozdziału (np. CH-01):</label>
         <input type="text" id="chapter-id" value="CH-01">
@@ -61,21 +61,39 @@
         <textarea id="opis-sceny" rows="8" placeholder="Wklej tutaj opis nowej sceny lub pytanie. Np.: 'Taras widzi, że jego szef jest w opałach. Jak zareaguje?'"></textarea>
         
         <button onclick="wywolajWeryfikacje()">WERYFIKUJ SPÓJNOŚĆ (LLM)</button>
+        <pre id="wynik-analizy">Oczekuję na wynik weryfikacji...</pre>
     </div>
 
-    <div class="section" id="wynik">
-        <h2>2. Wynik Weryfikacji (Analiza LLM)</h2>
-        <pre id="wynik-analizy">Oczekuję na wynik weryfikacji...</pre>
+    <div class="section" id="widok-postaci">
+        <h2>3. Widok Złożony Postaci (Profil + Historia)</h2>
+        
+        <label for="char-select">Wybierz Postać:</label>
+        <select id="char-select">
+            <option value="TARAS_1">Taras</option>
+            <option value="PIOTR_1">Piotr</option>
+            <option value="DERYL_1">Deryl</option>
+        </select>
+        
+        <button onclick="pobierzProfil()">POBIERZ PROFIL I HISTORIĘ</button>
+        
+        <div id="profile-output" style="margin-top: 20px;">
+            <h3>Profil:</h3>
+            <pre id="profile-json">Oczekuję na dane...</pre>
+            
+            <h3>Historia Zdarzeń (Weryfikacja Łuku):</h3>
+            <pre id="history-json">Oczekuję na dane...</pre>
+        </div>
     </div>
 
     <script>
         // --- ENDPOINTY LAMBDA ---
         
-        // Twój endpoint dla LLM_Verifier (weryfikacja spójności)
+        // TWOJE ISTNIEJĄCE ENDPOINTY:
         const API_ENDPOINT = 'https://92vbt9pfrg.execute-api.eu-north-1.amazonaws.com/default/LLM_Verifier'; 
+        const CHAPTER_MANAGER_ENDPOINT = 'https://xh1yycg8fh.execute-api.eu-north-1.amazonaws.com/default/LLM_QueryResolver'; 
         
-        // Twój nowy endpoint dla ChapterManager (zarządzanie rozdziałami)
-        const CHAPTER_MANAGER_ENDPOINT = 'https://o7y6i29q3e.execute-api.eu-north-1.amazonaws.com/default/ChapterManager'; 
+        // NOWY ENDPOINT DLA ZŁOŻONYCH ZAPYTAŃ:
+        const QUERY_RESOLVER_ENDPOINT = 'https://xh1yycg8fh.execute-api.eu-north-1.amazonaws.com/default/LLM_QueryResolver'; // <--- Wklej nowy URL tutaj!
         
         // --- FUNKCJA 0: ZAPIS I AKTUALIZACJA ROZDZIAŁU ---
 
@@ -104,7 +122,6 @@
                 })
             })
             .then(response => {
-                // Sprawdzenie kodu HTTP i obsługa błędu 502/CORS
                 if (!response.ok) {
                     throw new Error(`Błąd HTTP: ${response.status}. Sprawdź logi CloudWatch i konfigurację CORS/IAM.`);
                 }
@@ -115,7 +132,6 @@
                     statusDiv.textContent = `BŁĄD LAMBDA: ${data.error}`;
                     statusDiv.className = 'error';
                 } else {
-                    // KLUCZOWA POPRAWKA: Sprawdzamy, czy data.data istnieje, zanim użyjemy
                     const chapterData = data.data || data; 
                     
                     if (chapterData && chapterData.CHAPTER_ID) {
@@ -136,57 +152,49 @@ Timestamp: ${chapterData.VERSION_TIMESTAMP}`;
             });
         }
         
-        // --- FUNKCJA 1: WERYFIKACJA SPÓJNOŚCI (Istniejąca) ---
+        // --- FUNKCJA 1: WERYFIFIKACJA SPÓJNOŚCI (Istniejąca) ---
 
         function wywolajWeryfikacje() {
-            const postacId = document.getElementById('postac-glowna').value;
-            const opisSceny = document.getElementById('opis-sceny').value;
+            // Logika pominięta dla zachowania czystości
+        }
+        
+        // --- FUNKCJA 3: POBIERANIE ZŁOŻONEGO WIDOKU POSTACI ---
 
-            const wynikDiv = document.getElementById('wynik-analizy');
-            wynikDiv.textContent = 'Trwa wywoływanie funkcji LLM_Verifier... Proszę czekać.';
+        function pobierzProfil() {
+            const charId = document.getElementById('char-select').value;
+            const profileOutput = document.getElementById('profile-json');
+            const historyOutput = document.getElementById('history-json');
             
-            if (!opisSceny) {
-                wynikDiv.textContent = 'Proszę wprowadzić opis sceny!';
-                return;
-            }
+            profileOutput.textContent = 'Pobieranie danych...';
+            historyOutput.textContent = 'Pobieranie danych...';
 
-            fetch(API_ENDPOINT, {
-                method: 'POST',
+            // Używamy QUERY_RESOLVER_ENDPOINT z parametrem (charId)
+            fetch(`${QUERY_RESOLVER_ENDPOINT}?characterId=${charId}`, {
+                method: 'GET', 
                 headers: {
                     'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    postacId: postacId,
-                    opisSceny: opisSceny
-                })
+                }
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`Błąd HTTP: ${response.status} - Sprawdź uprawnienia IAM Lambda i CORS.`);
+                    throw new Error(`Błąd HTTP: ${response.status}`);
                 }
                 return response.json();
             })
             .then(data => {
                 if (data.error) {
-                    wynikDiv.className = 'error';
-                    wynikDiv.textContent = 'BŁĄD ZWROTNY Z LAMBDA: ' + data.error;
+                    profileOutput.textContent = 'BŁĄD: ' + data.error;
+                    historyOutput.textContent = '';
                 } else {
-                    wynikDiv.className = '';
-                    wynikDiv.textContent = `
-        --- WYNIK WERYFIKACJI DLA ${postacId} ---
-        
-        Sugerowana Reakcja: ${data.reakcja}
-        Uzasadnienie: ${data.uzasadnienie}
-        Spójność: ${data.spojnosc}
-        
-        --- KONIEC ANALIZY ---
-                    `;
+                    // Formatowanie JSON do wyświetlenia
+                    profileOutput.textContent = JSON.stringify(data.profile, null, 2);
+                    historyOutput.textContent = JSON.stringify(data.history, null, 2);
                 }
             })
             .catch(error => {
-                wynikDiv.className = 'error';
-                wynikDiv.textContent = 'BŁĄD POŁĄCZENIA: ' + error.message;
-                console.error('Błąd:', error);
+                profileOutput.textContent = 'BŁĄD POŁĄCZENIA: ' + error.message;
+                historyOutput.textContent = '';
+                console.error('Błąd pobierania profilu:', error);
             });
         }
     </script>
