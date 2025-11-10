@@ -78,6 +78,8 @@
             background-color: #e9f7fe;
             border-radius: 6px;
             font-size: 1.1em;
+            overflow: hidden; /* Dodano na wypadek długiego tekstu */
+            white-space: nowrap;
         }
         .summary-item strong {
             display: block;
@@ -90,10 +92,12 @@
             list-style: none;
             padding: 0;
             flex-grow: 1;
+            min-height: 150px; /* Dodano, by utrzymać wysokość karty */
         }
         .item-list li {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             padding: 10px 0;
             border-bottom: 1px dashed #ccc;
         }
@@ -126,6 +130,10 @@
         .add-btn:hover {
             background-color: #0056b3;
         }
+        .loading-text {
+            text-align: center;
+            color: #555;
+        }
     </style>
 </head>
 <body>
@@ -140,7 +148,7 @@
         </nav>
     </header>
 
-    <div class="container">
+    <div class="container" id="dashboard-container">
         
         <div class="card chapter-card">
             <div class="card-header">
@@ -148,31 +156,17 @@
             </div>
             
             <div class="summary-box">
-                <div class="summary-item">Ilość: <strong>12</strong></div>
-                <div class="summary-item">Znaki: <strong>98k</strong></div>
+                <div class="summary-item">Ilość: <strong id="chapter-count">...</strong></div>
+                <div class="summary-item">Znaki: <strong id="chapter-chars">...</strong></div>
                 <div class="summary-item">Czas: <strong>Lorem</strong></div>
             </div>
             
             <h4>Ostatnie zmiany:</h4>
-            <ul class="item-list">
-                <li>
-                    <span>Rozdział CH-03</span>
-                    <span>2025-11-08 / 15k</span>
-                    <button class="cta-btn">Podgląd</button>
-                </li>
-                <li>
-                    <span>Rozdział CH-02</span>
-                    <span>2025-10-29 / 22k</span>
-                    <button class="cta-btn">Podgląd</button>
-                </li>
-                 <li>
-                    <span>Rozdział CH-01</span>
-                    <span>2025-10-27 / 3k</span>
-                    <button class="cta-btn">Podgląd</button>
-                </li>
+            <ul class="item-list" id="chapter-list">
+                <p class="loading-text">Ładowanie rozdziałów...</p>
             </ul>
             
-            <button class="add-btn" onclick="window.location.href='index.html'">+ Dodaj Rozdział</button>
+            <button class="add-btn" onclick="viewAddChapter()">+ Dodaj Rozdział</button>
         </div>
 
         <div class="card characters-card">
@@ -181,28 +175,12 @@
             </div>
             
             <div class="summary-box" style="grid-template-columns: 1fr;">
-                <div class="summary-item">Liczba bohaterów: <strong>15</strong></div>
+                <div class="summary-item">Liczba bohaterów: <strong id="char-count">...</strong></div>
             </div>
             
             <h4>Ostatnio edytowane:</h4>
-            <ul class="item-list">
-                <li>
-                    <span>**Piotr** (Ziemia)</span>
-                    <button class="cta-btn">Podgląd</button>
-                </li>
-                <li>
-                    <span>**Taras** (Gaja)</span>
-                    <button class="cta-btn">Podgląd</button>
-                </li>
-                 <li>
-                    <span>Marta (Marek)</span>
-                    <span>Węzeł: Lorem</span>
-                    <button class="cta-btn">Podgląd</button>
-                </li>
-                <li>
-                    <span>Deryl (Kula)</span>
-                    <button class="cta-btn">Podgląd</button>
-                </li>
+            <ul class="item-list" id="char-list">
+                <p class="loading-text">Ładowanie postaci...</p>
             </ul>
             
             <button class="add-btn">+ Dodaj Nową Postać</button>
@@ -218,27 +196,11 @@
             </div>
             
             <h4>Ostatnie Zdarzenia:</h4>
-            <ul class="item-list">
-                <li>
-                    <span>Zdrada na Hubie</span>
-                    <span>2025-11-09</span>
-                    <button class="cta-btn">Podgląd</button>
-                </li>
-                <li>
-                    <span>Odkrycie schronu</span>
-                    <span>2025-11-08</span>
-                    <button class="cta-btn">Podgląd</button>
-                </li>
-                 <li>
-                    <span>Kłótnia w kwaterze</span>
-                    <span>2025-11-07</span>
-                    <button class="cta-btn">Podgląd</button>
-                </li>
-                <li>
-                    <span>Pierwsza śmierć</span>
-                    <span>2025-11-05</span>
-                    <button class="cta-btn">Podgląd</button>
-                </li>
+            <ul class="item-list" id="event-list">
+                <li><span>Zdrada na Hubie</span><span>2025-11-09</span><button class="cta-btn">Podgląd</button></li>
+                <li><span>Odkrycie schronu</span><span>2025-11-08</span><button class="cta-btn">Podgląd</button></li>
+                <li><span>Kłótnia w kwaterze</span><span>2025-11-07</span><button class="cta-btn">Podgląd</button></li>
+                <li><span>Pierwsza śmierć</span><span>2025-11-05</span><button class="cta-btn">Podgląd</button></li>
             </ul>
             
             <button class="add-btn">+ Dodaj Nowy Event</button>
@@ -254,24 +216,11 @@
             </div>
             
             <h4>Ostatnio edytowane:</h4>
-            <ul class="item-list">
-                <li>
-                    <span>Gaja (Home)</span>
-                    <span>Ostatnia zmiana: 22h</span>
-                    <button class="cta-btn">Podgląd</button>
-                </li>
-                <li>
-                    <span>Ziemia (Hub Centralny)</span>
-                    <button class="cta-btn">Podgląd</button>
-                </li>
-                 <li>
-                    <span>Kula (Stary Węzeł)</span>
-                    <button class="cta-btn">Podgląd</button>
-                </li>
-                <li>
-                    <span>Nowa Stacja (Lorem)</span>
-                    <button class="cta-btn">Podgląd</button>
-                </li>
+            <ul class="item-list" id="worlds-list">
+                <li><span>Gaja (Home)</span><span>Ostatnia zmiana: 22h</span><button class="cta-btn">Podgląd</button></li>
+                <li><span>Ziemia (Hub Centralny)</span><button class="cta-btn">Podgląd</button></li>
+                <li><span>Kula (Stary Węzeł)</span><button class="cta-btn">Podgląd</button></li>
+                <li><span>Nowa Stacja (Lorem)</span><button class="cta-btn">Podgląd</button></li>
             </ul>
             
             <button class="add-btn">+ Dodaj Nowy Świat</button>
@@ -280,4 +229,96 @@
     </div>
 
 </body>
+<script>
+    // ====================================================================
+    // PAMIĘTAJ: Zmień ten placeholder na uzyskany adres URL dla DashboardDataResolver
+    const DASHBOARD_API_ENDPOINT = 'https://1ciutze8te.execute-api.eu-north-1.amazonaws.com/default/DashboardDataResolver'; 
+    // ====================================================================
+
+    document.addEventListener('DOMContentLoaded', fetchData);
+
+    async function fetchData() {
+        try {
+            const response = await fetch(DASHBOARD_API_ENDPOINT, { method: 'GET' });
+            if (!response.ok) {
+                // Rzucamy błąd, jeśli status HTTP nie jest 2xx
+                throw new Error(`HTTP Error: ${response.status}. Sprawdź logi DashboardDataResolver.`);
+            }
+            const data = await response.json();
+            
+            // Wprowadzenie danych do sekcji rozdziałów i postaci
+            updateChapterSection(data.chapters);
+            updateCharacterSection(data.characters); 
+
+        } catch (error) {
+            console.error('Błąd ładowania Dashboardu:', error);
+            const container = document.getElementById('dashboard-container');
+            container.innerHTML = `<p style="color: red; padding: 20px;">Nie udało się załadować danych. Sprawdź konsolę i konfigurację CORS/IAM: ${error.message}</p>`;
+        }
+    }
+
+    function updateChapterSection(chaptersData) {
+        // Aktualizacja podsumowania
+        const count = document.getElementById('chapter-count');
+        const chars = document.getElementById('chapter-chars');
+
+        count.textContent = chaptersData.count;
+        // Formatowanie znaków do 'k' (np. 180k)
+        chars.textContent = (chaptersData.totalCharacters / 1000).toFixed(1) + 'k'; 
+
+        // Aktualizacja listy ostatnich rozdziałów
+        const list = document.getElementById('chapter-list');
+        list.innerHTML = ''; // Czyścimy domyślne ładowanie
+
+        if (chaptersData.lastUpdates.length === 0) {
+            list.innerHTML = '<p class="loading-text">Brak zapisanych rozdziałów.</p>';
+            return;
+        }
+        
+        // Wypełniamy listę 4 ostatnimi rozdziałami
+        chaptersData.lastUpdates.forEach(chapter => {
+            const li = document.createElement('li');
+            const date = new Date(chapter.VERSION_TIMESTAMP).toLocaleDateString('pl-PL');
+            const charCount = (chapter.CONTENT.length / 1000).toFixed(1) + 'k';
+            const title = chapter.TITLE || chapter.CHAPTER_ID; // Używamy ID, jeśli brak tytułu
+
+            li.innerHTML = `
+                <span><strong>${title.substring(0, 20)}</strong></span>
+                <span>${date} / ${charCount}</span>
+                <button class="cta-btn" onclick="viewChapter('${chapter.CHAPTER_ID}')">Podgląd</button>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    function updateCharacterSection(charactersData) {
+        // Aktualizacja podsumowania
+        const count = document.getElementById('char-count');
+        count.textContent = charactersData.count;
+        
+        // Na razie lista postaci pozostaje statyczna, 
+        // ale w przyszłości będzie tu pętla charactersData.lastEdits
+        const list = document.getElementById('char-list');
+        if (charactersData.count > 0) {
+            // Czyścimy loading text jeśli mamy dane
+             list.innerHTML = ''; 
+             list.innerHTML = `
+                <li><span>**Piotr** (Ziemia)</span><button class="cta-btn">Podgląd</button></li>
+                <li><span>**Taras** (Gaja)</span><button class="cta-btn">Podgląd</button></li>
+                <li><span>Marta (Marek)</span><span>Węzeł: Lorem</span><button class="cta-btn">Podgląd</button></li>
+                <li><span>Deryl (Kula)</span><button class="cta-btn">Podgląd</button></li>
+             `;
+        }
+    }
+
+    // Funkcja do przełączenia na widok dodawania rozdziału (założenie: index.html to formularz)
+    function viewAddChapter() {
+        window.location.href='index.html'; 
+    }
+    
+    function viewChapter(id) {
+        // Funkcja do nawigacji do podglądu rozdziału
+        alert(`Otwieram podgląd rozdziału: ${id}. Logika nawigacji zostanie zaimplementowana później.`);
+    }
+</script>
 </html>
