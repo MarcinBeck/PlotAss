@@ -3,71 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LLM Fabularny Asystent</title>
+    <title>LLM Fabularny Asystent: Weryfikacja</title>
     <style>
-        /* Minimalne style CSS dla widoku weryfikacji */
-        body { font-family: sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
-        .section { margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
-        textarea, select { width: 100%; padding: 8px; margin-top: 5px; }
-        button { padding: 10px 20px; cursor: pointer; }
+        /* Minimalne style CSS */
+        body { font-family: sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; line-height: 1.6; background-color: #f4f4f9; }
+        h1 { color: #333; }
+        .section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        label { display: block; margin-top: 10px; font-weight: bold; color: #555; }
+        textarea, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { 
+            padding: 12px 25px; 
+            cursor: pointer; 
+            background-color: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            font-size: 16px; 
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        button:hover { background-color: #0056b3; }
+        #wynik-analizy { background-color: #e9ecef; padding: 15px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; color: #333; border: 1px dashed #aaa;}
+        .error { color: red; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h1>Weryfikacja Spójności Sceny</h1>
+    <h1>Weryfikacja Spójności Sceny (FAZA II)</h1>
 
     <div class="section" id="wejscie">
         <h2>1. Parametry Wejściowe (Kontekst)</h2>
         
         <label for="postac-glowna">Postać Główna (Weryfikowana):</label>
         <select id="postac-glowna">
-            <option value="TARAS_1">Taras (Gaja)</option>
-            <option value="PIOTR_1">Piotr (Ziemia)</option>
-            </select>
-        
-        <label for="kontekst-fabularny">Stan Fabuły (Wiedza/Ewolucja):</label>
-        <select id="kontekst-fabularny">
-            <option value="EVENT_2_2">Aktualny stan (Po Zdarzeniu 5: Śmierć Mravika)</option>
-            <option value="EVENT_1_0">Stan Początkowy</option>
+            <option value="TARAS_1">Taras (Introwertyk, Gaja)</option>
+            <option value="PIOTR_1">Piotr (Ekstrawertyk, Ziemia)</option>
+            <option value="DERYL_1">Deryl (Formalista, Kula)</option>
         </select>
-
+        
         <label for="opis-sceny">Treść Sceny / Pytanie do Weryfikacji:</label>
-        <textarea id="opis-sceny" rows="8" placeholder="Wklej tutaj opis nowej sceny lub pytanie, np.: 'Taras i Piotr spotykają się. Jak Taras zareaguje na dowcip Piotra?'"></textarea>
+        <textarea id="opis-sceny" rows="8" placeholder="Wklej tutaj opis nowej sceny lub pytanie. Np.: 'Piotr widzi, jak Taras, cały w mazi i wściekły, wychodzi z komisariatu. Jak Piotr zareaguje na jego widok?'"></textarea>
         
         <button onclick="wywolajWeryfikacje()">WERYFIKUJ SPÓJNOŚĆ (LLM)</button>
     </div>
 
     <div class="section" id="wynik">
         <h2>2. Wynik Weryfikacji (Analiza LLM)</h2>
-        <p>Tutaj pojawi się wynik po wywołaniu funkcji Lambda (np. Sugerowana Reakcja, Uzasadnienie, Błędy Spójności).</p>
-        <pre id="wynik-analizy"></pre>
+        <pre id="wynik-analizy">Oczekuję na wynik weryfikacji...</pre>
     </div>
 
     <script>
+        // UWAGA: Twój unikalny API Endpoint został tu automatycznie wklejony
+        const API_ENDPOINT = 'https://92vbt9pfrg.execute-api.eu-north-1.amazonaws.com/default/LLM_Verifier';
+
         function wywolajWeryfikacje() {
             const postacId = document.getElementById('postac-glowna').value;
-            const kontekstId = document.getElementById('kontekst-fabularny').value;
+            // Pole kontekst-fabularny jest na razie pominięte w FE, ale wysyłamy postacId
             const opisSceny = document.getElementById('opis-sceny').value;
 
             const wynikDiv = document.getElementById('wynik-analizy');
-            wynikDiv.textContent = 'Trwa wywoływanie funkcji LLM_Verifier...';
+            wynikDiv.textContent = 'Trwa wywoływanie funkcji LLM_Verifier... Proszę czekać.';
             
-            // TUTAJ NASTĄPI WYWOŁANIE DO API GATEWAY / LAMBDA
-            // Obecnie to tylko symulacja
-            setTimeout(() => {
-                 wynikDiv.textContent = `
-                 --- SYMULACJA WYNIKU ---
-                 Postać: ${postacId}
-                 Kontekst: ${kontekstId}
-                 Scena: "${opisSceny.substring(0, 50)}..."
-                 
-                 Status: Sukces
-                 Spójność: TAK (Wysoka)
-                 Sugerowana Reakcja: Odrzucenie Humoru, Powrót do Faktów.
-                 Uzasadnienie: Zgodne z cechą 'B.1. Główna Trauma' (Ignorowanie emocji po stracie).
-                 --- KONIEC SYMULACJI ---
-                 `;
-            }, 2000);
+            if (!opisSceny) {
+                wynikDiv.textContent = 'Proszę wprowadzić opis sceny!';
+                return;
+            }
+
+            fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    postacId: postacId,
+                    opisSceny: opisSceny
+                })
+            })
+            .then(response => {
+                // Sprawdzenie, czy odpowiedź jest w porządku (np. 200 OK)
+                if (!response.ok) {
+                    throw new Error(`Błąd HTTP: ${response.status} - Sprawdź uprawnienia IAM Lambda i CORS.`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Wyświetlanie rzeczywistych wyników z Lambda
+                if (data.error) {
+                    wynikDiv.className = 'error';
+                    wynikDiv.textContent = 'BŁĄD ZWROTNY Z LAMBDA: ' + data.error;
+                } else {
+                    wynikDiv.className = '';
+                    wynikDiv.textContent = `
+        --- WYNIK WERYFIKACJI DLA ${postacId} ---
+        
+        Sugerowana Reakcja: ${data.reakcja}
+        Uzasadnienie: ${data.uzasadnienie}
+        Spójność: ${data.spojnosc}
+        
+        --- KONIEC ANALIZY ---
+                    `;
+                }
+            })
+            .catch(error => {
+                wynikDiv.className = 'error';
+                wynikDiv.textContent = 'BŁĄD POŁĄCZENIA / CORS: ' + error.message;
+                console.error('Błąd:', error);
+            });
         }
     </script>
 </body>
