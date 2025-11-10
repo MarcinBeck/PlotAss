@@ -104,8 +104,9 @@
                 })
             })
             .then(response => {
+                // Sprawdzenie kodu HTTP i obsługa błędu 502/CORS
                 if (!response.ok) {
-                    throw new Error(`Błąd HTTP: ${response.status}`);
+                    throw new Error(`Błąd HTTP: ${response.status}. Sprawdź logi CloudWatch i konfigurację CORS/IAM.`);
                 }
                 return response.json();
             })
@@ -114,11 +115,18 @@
                     statusDiv.textContent = `BŁĄD LAMBDA: ${data.error}`;
                     statusDiv.className = 'error';
                 } else {
-                    statusDiv.className = '';
-                    statusDiv.textContent = `SUKCES! Rozdział ${data.data.CHAPTER_ID} zapisany. 
-Status: ${data.data.STATUS}. 
-Timestamp: ${data.data.VERSION_TIMESTAMP}`;
-                    // W przyszłości: Tutaj zostanie wywołana LLM_Extractor
+                    // KLUCZOWA POPRAWKA: Sprawdzamy, czy data.data istnieje, zanim użyjemy
+                    const chapterData = data.data || data; 
+                    
+                    if (chapterData && chapterData.CHAPTER_ID) {
+                        statusDiv.className = '';
+                        statusDiv.textContent = `SUKCES! Rozdział ${chapterData.CHAPTER_ID} zapisany. 
+Status: ${chapterData.STATUS}. 
+Timestamp: ${chapterData.VERSION_TIMESTAMP}`;
+                    } else {
+                        statusDiv.className = 'error';
+                        statusDiv.textContent = `BŁĄD STRUKTURY DANYCH: Nie znaleziono CHAPTER_ID. Pełna odpowiedź: ${JSON.stringify(data)}`;
+                    }
                 }
             })
             .catch(error => {
@@ -177,7 +185,7 @@ Timestamp: ${data.data.VERSION_TIMESTAMP}`;
             })
             .catch(error => {
                 wynikDiv.className = 'error';
-                wynikDiv.textContent = 'BŁĄD POŁĄCZENIA / CORS: ' + error.message;
+                wynikDiv.textContent = 'BŁĄD POŁĄCZENIA: ' + error.message;
                 console.error('Błąd:', error);
             });
         }
