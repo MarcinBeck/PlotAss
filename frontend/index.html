@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Fabularny Asystent</title>
+    <style>
+        /* Minimalne style CSS dla widoku weryfikacji */
+        body { font-family: sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .section { margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        textarea, select { width: 100%; padding: 8px; margin-top: 5px; }
+        button { padding: 10px 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h1>Weryfikacja Spójności Sceny</h1>
+
+    <div class="section" id="wejscie">
+        <h2>1. Parametry Wejściowe (Kontekst)</h2>
+        
+        <label for="postac-glowna">Postać Główna (Weryfikowana):</label>
+        <select id="postac-glowna">
+            <option value="TARAS_1">Taras (Gaja)</option>
+            <option value="PIOTR_1">Piotr (Ziemia)</option>
+            </select>
+        
+        <label for="kontekst-fabularny">Stan Fabuły (Wiedza/Ewolucja):</label>
+        <select id="kontekst-fabularny">
+            <option value="EVENT_2_2">Aktualny stan (Po Zdarzeniu 5: Śmierć Mravika)</option>
+            <option value="EVENT_1_0">Stan Początkowy</option>
+        </select>
+
+        <label for="opis-sceny">Treść Sceny / Pytanie do Weryfikacji:</label>
+        <textarea id="opis-sceny" rows="8" placeholder="Wklej tutaj opis nowej sceny lub pytanie, np.: 'Taras i Piotr spotykają się. Jak Taras zareaguje na dowcip Piotra?'"></textarea>
+        
+        <button onclick="wywolajWeryfikacje()">WERYFIKUJ SPÓJNOŚĆ (LLM)</button>
+    </div>
+
+    <div class="section" id="wynik">
+        <h2>2. Wynik Weryfikacji (Analiza LLM)</h2>
+        <p>Tutaj pojawi się wynik po wywołaniu funkcji Lambda (np. Sugerowana Reakcja, Uzasadnienie, Błędy Spójności).</p>
+        <pre id="wynik-analizy"></pre>
+    </div>
+
+    <script>
+        function wywolajWeryfikacje() {
+            const postacId = document.getElementById('postac-glowna').value;
+            const kontekstId = document.getElementById('kontekst-fabularny').value;
+            const opisSceny = document.getElementById('opis-sceny').value;
+
+            const wynikDiv = document.getElementById('wynik-analizy');
+            wynikDiv.textContent = 'Trwa wywoływanie funkcji LLM_Verifier...';
+            
+            // TUTAJ NASTĄPI WYWOŁANIE DO API GATEWAY / LAMBDA
+            // Obecnie to tylko symulacja
+            setTimeout(() => {
+                 wynikDiv.textContent = `
+                 --- SYMULACJA WYNIKU ---
+                 Postać: ${postacId}
+                 Kontekst: ${kontekstId}
+                 Scena: "${opisSceny.substring(0, 50)}..."
+                 
+                 Status: Sukces
+                 Spójność: TAK (Wysoka)
+                 Sugerowana Reakcja: Odrzucenie Humoru, Powrót do Faktów.
+                 Uzasadnienie: Zgodne z cechą 'B.1. Główna Trauma' (Ignorowanie emocji po stracie).
+                 --- KONIEC SYMULACJI ---
+                 `;
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
