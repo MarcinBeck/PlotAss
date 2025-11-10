@@ -4,137 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LLM Fabularny Asystent: Dashboard</title>
-    <style>
-        /* Globalne style */
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #f4f4f9; color: #333; }
-        
-        /* === Nagłówek i Menu === */
-        header { 
-            background-color: #343a40; 
-            color: white; 
-            padding: 15px 40px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        nav a { 
-            color: white; 
-            text-decoration: none; 
-            margin-left: 25px; 
-            font-weight: 500;
-            transition: color 0.3s;
-        }
-        nav a:hover { color: #8bd3e6; }
-        h1 { margin: 0; font-size: 24px; }
-
-        /* === Sekcja Główna i Siatka (Grid) === */
-        .container { 
-            padding: 40px; 
-            display: grid; 
-            /* Dzieli na 4 równe kolumny */
-            grid-template-columns: repeat(4, 1fr); 
-            gap: 30px; 
-        }
-        
-        /* === Style dla Poszczególnych Sekcji (Kart) === */
-        .card {
-            background-color: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            transition: transform 0.2s;
-        }
-        .card:hover {
-             transform: translateY(-3px);
-        }
-        
-        .card-header {
-            border-bottom: 2px solid #e0e0e0;
-            padding-bottom: 15px;
-            margin-bottom: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .card-header h3 {
-            margin: 0;
-            color: #007bff;
-            font-size: 1.5em;
-        }
-
-        .summary-box {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .summary-item {
-            text-align: center;
-            padding: 8px;
-            background-color: #e9f7fe;
-            border-radius: 6px;
-            font-size: 1.1em;
-            overflow: hidden; /* Dodano na wypadek długiego tekstu */
-            white-space: nowrap;
-        }
-        .summary-item strong {
-            display: block;
-            font-size: 1.5em;
-            color: #007bff;
-        }
-        
-        /* Style dla list ostatnich elementów */
-        .item-list {
-            list-style: none;
-            padding: 0;
-            flex-grow: 1;
-            min-height: 150px; /* Dodano, by utrzymać wysokość karty */
-        }
-        .item-list li {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px dashed #ccc;
-        }
-        .item-list li:last-child {
-            border-bottom: none;
-        }
-        .cta-btn {
-            background-color: #28a745;
-            color: white;
-            padding: 8px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .cta-btn:hover {
-            background-color: #218838;
-        }
-        
-        .add-btn {
-            padding: 10px;
-            margin-top: auto; /* Wyrównuje przycisk do dołu karty */
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .add-btn:hover {
-            background-color: #0056b3;
-        }
-        .loading-text {
-            text-align: center;
-            color: #555;
-        }
-    </style>
+    <link rel="stylesheet" href="css/styles.css"> 
 </head>
 <body>
 
@@ -228,97 +98,58 @@
 
     </div>
 
-</body>
-<script>
-    // ====================================================================
-    // PAMIĘTAJ: Zmień ten placeholder na uzyskany adres URL dla DashboardDataResolver
-    const DASHBOARD_API_ENDPOINT = 'https://1ciutze8te.execute-api.eu-north-1.amazonaws.com/default/DashboardDataResolver'; 
-    // ====================================================================
+    <div id="chapterModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('chapterModal')">&times;</span>
+            <h2>Dodaj/Aktualizuj Rozdział</h2>
 
-    document.addEventListener('DOMContentLoaded', fetchData);
+            <div id="input-form">
+                <label for="modal-chapter-id">ID Rozdziału (np. CH-01):</label>
+                <input type="text" id="modal-chapter-id" value="CH-01">
 
-    async function fetchData() {
-        try {
-            const response = await fetch(DASHBOARD_API_ENDPOINT, { method: 'GET' });
-            if (!response.ok) {
-                // Rzucamy błąd, jeśli status HTTP nie jest 2xx
-                throw new Error(`HTTP Error: ${response.status}. Sprawdź logi DashboardDataResolver.`);
-            }
-            const data = await response.json();
+                <label for="modal-chapter-title">Tytuł Rozdziału:</label>
+                <input type="text" id="modal-chapter-title" placeholder="Wyprawa na Północ">
+                
+                <label for="modal-chapter-content">Treść Rozdziału (Surowy Tekst):</label>
+                <textarea id="modal-chapter-content" rows="12" placeholder="Wklej tu cały tekst rozdziału."></textarea>
+                
+                <button id="start-analysis-btn" onclick="startChapterAnalysis()">DODAJ I ZACZNIJ ANALIZĘ</button>
+            </div>
             
-            // Wprowadzenie danych do sekcji rozdziałów i postaci
-            updateChapterSection(data.chapters);
-            updateCharacterSection(data.characters); 
+            <div id="analysis-summary" class="analysis-results" style="display: none;">
+                <h3>Status Analizy: <span id="analysis-status"></span></h3>
+                <p>Identyfikator wersji: <code id="version-timestamp"></code></p>
+                <p>Wszystkie zmiany zostały automatycznie przeanalizowane przez system LLM. Proszę zweryfikuj zmiany i zatwierdź.</p>
+                
+                <div class="analysis-section">
+                    <div class="result-header">
+                        <span>Bohaterowie:</span>
+                        <span id="char-changes-count" class="status-tag status-edit">0 Edycja / 0 Nowy</span>
+                    </div>
+                    <ul id="character-analysis-list" class="item-list"></ul>
+                </div>
 
-        } catch (error) {
-            console.error('Błąd ładowania Dashboardu:', error);
-            const container = document.getElementById('dashboard-container');
-            container.innerHTML = `<p style="color: red; padding: 20px;">Nie udało się załadować danych. Sprawdź konsolę i konfigurację CORS/IAM: ${error.message}</p>`;
-        }
-    }
+                <div class="analysis-section">
+                    <div class="result-header">
+                        <span>Wydarzenia Fabularne:</span>
+                        <span id="event-changes-count" class="status-tag status-new">0 Nowy</span>
+                    </div>
+                    <ul id="event-analysis-list" class="item-list"></ul>
+                </div>
 
-    function updateChapterSection(chaptersData) {
-        // Aktualizacja podsumowania
-        const count = document.getElementById('chapter-count');
-        const chars = document.getElementById('chapter-chars');
+                <div class="analysis-section">
+                    <div class="result-header">
+                        <span>Światy/Lokacje:</span>
+                        <span id="world-changes-count" class="status-tag status-none">0 Bez Zmian</span>
+                    </div>
+                    <ul id="world-analysis-list" class="item-list"></ul>
+                </div>
 
-        count.textContent = chaptersData.count;
-        // Formatowanie znaków do 'k' (np. 180k)
-        chars.textContent = (chaptersData.totalCharacters / 1000).toFixed(1) + 'k'; 
+                <button id="final-confirm-btn" class="add-btn" style="background-color: #28a745;">ZATWIERDŹ I WDRÓŻ ZMIANY FABUŁY</button>
+            </div>
+        </div>
+    </div>
 
-        // Aktualizacja listy ostatnich rozdziałów
-        const list = document.getElementById('chapter-list');
-        list.innerHTML = ''; // Czyścimy domyślne ładowanie
-
-        if (chaptersData.lastUpdates.length === 0) {
-            list.innerHTML = '<p class="loading-text">Brak zapisanych rozdziałów.</p>';
-            return;
-        }
-        
-        // Wypełniamy listę 4 ostatnimi rozdziałami
-        chaptersData.lastUpdates.forEach(chapter => {
-            const li = document.createElement('li');
-            const date = new Date(chapter.VERSION_TIMESTAMP).toLocaleDateString('pl-PL');
-            const charCount = (chapter.CONTENT.length / 1000).toFixed(1) + 'k';
-            const title = chapter.TITLE || chapter.CHAPTER_ID; // Używamy ID, jeśli brak tytułu
-
-            li.innerHTML = `
-                <span><strong>${title.substring(0, 20)}</strong></span>
-                <span>${date} / ${charCount}</span>
-                <button class="cta-btn" onclick="viewChapter('${chapter.CHAPTER_ID}')">Podgląd</button>
-            `;
-            list.appendChild(li);
-        });
-    }
-
-    function updateCharacterSection(charactersData) {
-        // Aktualizacja podsumowania
-        const count = document.getElementById('char-count');
-        count.textContent = charactersData.count;
-        
-        // Na razie lista postaci pozostaje statyczna, 
-        // ale w przyszłości będzie tu pętla charactersData.lastEdits
-        const list = document.getElementById('char-list');
-        if (charactersData.count > 0) {
-            // Czyścimy loading text jeśli mamy dane
-             list.innerHTML = ''; 
-             list.innerHTML = `
-                <li><span>**Piotr** (Ziemia)</span><button class="cta-btn">Podgląd</button></li>
-                <li><span>**Taras** (Gaja)</span><button class="cta-btn">Podgląd</button></li>
-                <li><span>Marta (Marek)</span><span>Węzeł: Lorem</span><button class="cta-btn">Podgląd</button></li>
-                <li><span>Deryl (Kula)</span><button class="cta-btn">Podgląd</button></li>
-             `;
-        }
-    }
-
-    // Funkcja do przełączenia na widok dodawania rozdziału (założenie: index.html to formularz)
-    function viewAddChapter() {
-        window.location.href='index.html'; 
-    }
-    
-    function viewChapter(id) {
-        // Funkcja do nawigacji do podglądu rozdziału
-        alert(`Otwieram podgląd rozdziału: ${id}. Logika nawigacji zostanie zaimplementowana później.`);
-    }
-</script>
+    <script src="js/app.js"></script> 
+</body>
 </html>
