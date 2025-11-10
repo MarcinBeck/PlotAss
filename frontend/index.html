@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LLM Fabularny Asystent: Weryfikacja</title>
+    <title>LLM Fabularny Asystent</title>
     <style>
         /* Minimalne style CSS */
         body { font-family: sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; line-height: 1.6; background-color: #f4f4f9; }
         h1 { color: #333; }
         .section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         label { display: block; margin-top: 10px; font-weight: bold; color: #555; }
-        textarea, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        input[type="text"], textarea, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         button { 
             padding: 12px 25px; 
             cursor: pointer; 
@@ -23,16 +23,32 @@
             transition: background-color 0.3s;
         }
         button:hover { background-color: #0056b3; }
-        #wynik-analizy { background-color: #e9ecef; padding: 15px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; color: #333; border: 1px dashed #aaa;}
+        #wynik-analizy, #wynik-rozdziału { background-color: #e9ecef; padding: 15px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; color: #333; border: 1px dashed #aaa;}
         .error { color: red; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h1>Weryfikacja Spójności Sceny (FAZA II)</h1>
+    <h1>LLM Fabularny Asystent: Zarządzanie Treścią</h1>
+    
+    <div class="section" id="rozdziały">
+        <h2>0. Dodaj/Aktualizuj Rozdział (Wprowadzanie Surowej Treści)</h2>
+        
+        <label for="chapter-id">ID Rozdziału (np. CH-01):</label>
+        <input type="text" id="chapter-id" value="CH-01">
 
+        <label for="chapter-title">Tytuł Rozdziału:</label>
+        <input type="text" id="chapter-title" placeholder="Wyprawa na Północ">
+        
+        <label for="chapter-content">Treść Rozdziału (Surowy Tekst):</label>
+        <textarea id="chapter-content" rows="15" placeholder="Wpisz tu cały tekst rozdziału. System użyje go do automatycznej analizy..."></textarea>
+        
+        <button onclick="zapiszRozdzial()">ZAPISZ I AKTUALIZUJ TREŚĆ</button>
+        <pre id="wynik-rozdziału" style="margin-top: 15px;">Status zapisu: Oczekuję na dane...</pre>
+    </div>
+    
     <div class="section" id="wejscie">
-        <h2>1. Parametry Wejściowe (Kontekst)</h2>
+        <h2>1. Weryfikacja Spójności Sceny (FAZA II)</h2>
         
         <label for="postac-glowna">Postać Główna (Weryfikowana):</label>
         <select id="postac-glowna">
@@ -42,7 +58,7 @@
         </select>
         
         <label for="opis-sceny">Treść Sceny / Pytanie do Weryfikacji:</label>
-        <textarea id="opis-sceny" rows="8" placeholder="Wklej tutaj opis nowej sceny lub pytanie. Np.: 'Piotr widzi, jak Taras, cały w mazi i wściekły, wychodzi z komisariatu. Jak Piotr zareaguje na jego widok?'"></textarea>
+        <textarea id="opis-sceny" rows="8" placeholder="Wklej tutaj opis nowej sceny lub pytanie. Np.: 'Taras widzi, że jego szef jest w opałach. Jak zareaguje?'"></textarea>
         
         <button onclick="wywolajWeryfikacje()">WERYFIKUJ SPÓJNOŚĆ (LLM)</button>
     </div>
@@ -53,12 +69,69 @@
     </div>
 
     <script>
-        // UWAGA: Twój unikalny API Endpoint został tu automatycznie wklejony
-        const API_ENDPOINT = 'https://92vbt9pfrg.execute-api.eu-north-1.amazonaws.com/default/LLM_Verifier';
+        // --- ENDPOINTY LAMBDA ---
+        
+        // Twój endpoint dla LLM_Verifier (weryfikacja spójności)
+        const API_ENDPOINT = 'https://92vbt9pfrg.execute-api.eu-north-1.amazonaws.com/default/LLM_Verifier'; 
+        
+        // Twój nowy endpoint dla ChapterManager (zarządzanie rozdziałami)
+        const CHAPTER_MANAGER_ENDPOINT = 'https://2vzeje4aag.execute-api.eu-north-1.amazonaws.com/default/ChapterManager'; 
+        
+        // --- FUNKCJA 0: ZAPIS I AKTUALIZACJA ROZDZIAŁU ---
+
+        function zapiszRozdzial() {
+            const chapterId = document.getElementById('chapter-id').value;
+            const title = document.getElementById('chapter-title').value;
+            const content = document.getElementById('chapter-content').value;
+            const statusDiv = document.getElementById('wynik-rozdziału');
+            
+            if (!chapterId || !title || !content) {
+                statusDiv.textContent = 'BŁĄD: Wszystkie pola rozdziału muszą być wypełnione!';
+                return;
+            }
+
+            statusDiv.textContent = 'Trwa wysyłanie rozdziału do ChapterManager...';
+
+            fetch(CHAPTER_MANAGER_ENDPOINT, {
+                method: 'POST', 
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chapterId: chapterId,
+                    title: title,
+                    content: content
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Błąd HTTP: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    statusDiv.textContent = `BŁĄD LAMBDA: ${data.error}`;
+                    statusDiv.className = 'error';
+                } else {
+                    statusDiv.className = '';
+                    statusDiv.textContent = `SUKCES! Rozdział ${data.data.CHAPTER_ID} zapisany. 
+Status: ${data.data.STATUS}. 
+Timestamp: ${data.data.VERSION_TIMESTAMP}`;
+                    // W przyszłości: Tutaj zostanie wywołana LLM_Extractor
+                }
+            })
+            .catch(error => {
+                statusDiv.className = 'error';
+                statusDiv.textContent = 'BŁĄD POŁĄCZENIA: ' + error.message;
+                console.error('Błąd zapisu rozdziału:', error);
+            });
+        }
+        
+        // --- FUNKCJA 1: WERYFIKACJA SPÓJNOŚCI (Istniejąca) ---
 
         function wywolajWeryfikacje() {
             const postacId = document.getElementById('postac-glowna').value;
-            // Pole kontekst-fabularny jest na razie pominięte w FE, ale wysyłamy postacId
             const opisSceny = document.getElementById('opis-sceny').value;
 
             const wynikDiv = document.getElementById('wynik-analizy');
@@ -80,14 +153,12 @@
                 })
             })
             .then(response => {
-                // Sprawdzenie, czy odpowiedź jest w porządku (np. 200 OK)
                 if (!response.ok) {
                     throw new Error(`Błąd HTTP: ${response.status} - Sprawdź uprawnienia IAM Lambda i CORS.`);
                 }
                 return response.json();
             })
             .then(data => {
-                // Wyświetlanie rzeczywistych wyników z Lambda
                 if (data.error) {
                     wynikDiv.className = 'error';
                     wynikDiv.textContent = 'BŁĄD ZWROTNY Z LAMBDA: ' + data.error;
