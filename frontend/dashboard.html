@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Fabularny Asystent: Dashboard</title>
+    <style>
+        /* Globalne style */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #f4f4f9; color: #333; }
+        
+        /* === Nagłówek i Menu === */
+        header { 
+            background-color: #343a40; 
+            color: white; 
+            padding: 15px 40px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        nav a { 
+            color: white; 
+            text-decoration: none; 
+            margin-left: 25px; 
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        nav a:hover { color: #8bd3e6; }
+        h1 { margin: 0; font-size: 24px; }
+
+        /* === Sekcja Główna i Siatka (Grid) === */
+        .container { 
+            padding: 40px; 
+            display: grid; 
+            /* Dzieli na 4 równe kolumny */
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 30px; 
+        }
+        
+        /* === Style dla Poszczególnych Sekcji (Kart) === */
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            transition: transform 0.2s;
+        }
+        .card:hover {
+             transform: translateY(-3px);
+        }
+        
+        .card-header {
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-header h3 {
+            margin: 0;
+            color: #007bff;
+            font-size: 1.5em;
+        }
+
+        .summary-box {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .summary-item {
+            text-align: center;
+            padding: 8px;
+            background-color: #e9f7fe;
+            border-radius: 6px;
+            font-size: 1.1em;
+        }
+        .summary-item strong {
+            display: block;
+            font-size: 1.5em;
+            color: #007bff;
+        }
+        
+        /* Style dla list ostatnich elementów */
+        .item-list {
+            list-style: none;
+            padding: 0;
+            flex-grow: 1;
+        }
+        .item-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px dashed #ccc;
+        }
+        .item-list li:last-child {
+            border-bottom: none;
+        }
+        .cta-btn {
+            background-color: #28a745;
+            color: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .cta-btn:hover {
+            background-color: #218838;
+        }
+        
+        .add-btn {
+            padding: 10px;
+            margin-top: auto; /* Wyrównuje przycisk do dołu karty */
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .add-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>LLM Fabularny Asystent</h1>
+        <nav>
+            <a href="#">Dashboard</a>
+            <a href="#">Postacie</a>
+            <a href="#">Fabuła</a>
+            <a href="#">Światy</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        
+        <div class="card chapter-card">
+            <div class="card-header">
+                <h3>Treść (Rozdziały)</h3>
+            </div>
+            
+            <div class="summary-box">
+                <div class="summary-item">Ilość: <strong>12</strong></div>
+                <div class="summary-item">Znaki: <strong>98k</strong></div>
+                <div class="summary-item">Czas: <strong>Lorem</strong></div>
+            </div>
+            
+            <h4>Ostatnie zmiany:</h4>
+            <ul class="item-list">
+                <li>
+                    <span>Rozdział CH-03</span>
+                    <span>2025-11-08 / 15k</span>
+                    <button class="cta-btn">Podgląd</button>
+                </li>
+                <li>
+                    <span>Rozdział CH-02</span>
+                    <span>2025-10-29 / 22k</span>
+                    <button class="cta-btn">Podgląd</button>
+                </li>
+                 <li>
+                    <span>Rozdział CH-01</span>
+                    <span>2025-10-27 / 3k</span>
+                    <button class="cta-btn">Podgląd</button>
+                </li>
+            </ul>
+            
+            <button class="add-btn" onclick="window.location.href='index.html'">+ Dodaj Rozdział</button>
+        </div>
+
+        <div class="card characters-card">
+            <div class="card-header">
+                <h3>Postacie</h3>
+            </div>
+            
+            <div class="summary-box" style="grid-template-columns: 1fr;">
+                <div class="summary-item">Liczba bohaterów: <strong>15</strong></div>
+            </div>
+            
+            <h4>Ostatnio edytowane:</h4>
+            <ul class="item-list">
+                <li>
+                    <span>**Piotr** (Ziemia)</span>
+                    <button class="cta-btn">Podgląd</button>
+                </li>
+                <li>
+                    <span>**Taras** (Gaja)</span>
+                    <button class="cta-btn">Podgląd</button>
+                </li>
+                 <li>
+                    <span>Marta (Marek)</span>
+                    <span>Węzeł: Lorem</span>
+                    <button class="cta-btn">Podgląd</button>
+                </li>
+                <li>
+                    <span>Deryl (Kula)</span>
+                    <button class="cta-btn">Podgląd</button>
+                </li>
+            </ul>
+            
+            <button class="add-btn">+ Dodaj Nową Postać</button>
+        </div>
+
+        <div class="card plot-card">
+             <div class="card-header">
+                <h3>Fabuła (Eventy)</h3>
+            </div>
+            
+            <div class="summary-box" style="grid-template-columns: 1fr;">
+                <div class="summary-item">Ilość wydarzeń: <strong>48</strong></div>
+            </div>
+            
+            <h4>Ostatnie Zdarzenia:</h4>
+            <ul class="item-list">
+                <li>
+                    <span>Zdrada na Hubie</span>
+                    <span>2025-11-09</span>
+                    <button class="cta-btn">Podgląd</button>
+                </li>
+                <li>
+                    <span>Odkrycie schronu</span>
+                    <span>2025-11-08</span>
+                    <button class="cta-btn">Podgląd</button>
+                </li>
+                 <li>
+                    <span>Kłótnia w kwaterze</span>
+                    <span>2025-11-07</span>
+                    <button class="cta-btn">Podgląd</button>
+                </li>
+                <li>
+                    <span>Pierwsza śmierć</span>
+                    <span>2025-11-05</span>
+                    <button class="cta-btn">Podgląd</button>
+                </li>
+            </ul>
+            
+            <button class="add-btn">+ Dodaj Nowy Event</button>
+        </div>
+
+        <div class="card worlds-card">
+            <div class="card-header">
+                <h3>Światy/Lokacje</h3>
+            </div>
+            
+            <div class="summary-box" style="grid-template-columns: 1fr;">
+                <div class="summary-item">Liczba Światów: <strong>7</strong></div>
+            </div>
+            
+            <h4>Ostatnio edytowane:</h4>
+            <ul class="item-list">
+                <li>
+                    <span>Gaja (Home)</span>
+                    <span>Ostatnia zmiana: 22h</span>
+                    <button class="cta-btn">Podgląd</button>
+                </li>
+                <li>
+                    <span>Ziemia (Hub Centralny)</span>
+                    <button class="cta-btn">Podgląd</button>
+                </li>
+                 <li>
+                    <span>Kula (Stary Węzeł)</span>
+                    <button class="cta-btn">Podgląd</button>
+                </li>
+                <li>
+                    <span>Nowa Stacja (Lorem)</span>
+                    <button class="cta-btn">Podgląd</button>
+                </li>
+            </ul>
+            
+            <button class="add-btn">+ Dodaj Nowy Świat</button>
+        </div>
+
+    </div>
+
+</body>
+</html>
