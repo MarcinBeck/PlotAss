@@ -1,0 +1,18 @@
+version: 0.2
+
+phases:
+  build:
+    commands:
+      - echo "Rozpoczynanie pakowania kodu Lambda..."
+      # Pakowanie każdej funkcji Lambda osobno
+      # Upewnij się, że nazwy plików w backend/ są poprawne
+      - zip -j ChapterManager.zip backend/ChapterManager.mjs
+      - zip -j DashboardDataResolver.zip backend/ DashboardDataResolver.mjs
+      - zip -j LLM_QueryResolver.zip backend/LLM_QueryResolver.mjs
+      - echo "Pakowanie zakończone. Utworzono artefakty ZIP."
+artifacts:
+  files:
+    # Definicja artefaktów (plików ZIP) do wdrożenia
+    - ChapterManager.zip
+    - DashboardDataResolver.zip
+    - LLM_QueryResolver.zip
