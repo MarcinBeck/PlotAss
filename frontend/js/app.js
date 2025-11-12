@@ -5,7 +5,7 @@
 // DashboardDataResolver (GET - Ładowanie statystyk)
 const DASHBOARD_API_ENDPOINT = 'https://1ciutze8te.execute-api.eu-north-1.amazonaws.com/default/DashboardDataResolver'; 
 // ChapterManager (POST - Dodawanie rozdziału, wywoływanie analizy)
-const CHAPTER_MANAGER_ENDPOINT = 'https://amw32505t5.execute-api.eu-north-1.amazonaws.com/default/ChapterManager'; 
+const CHAPTER_MANAGER_ENDPOINT = 'https://kggk7qj2bk.execute-api.eu-north-1.amazonaws.com/FINAL_SUCCESS/DashboardDataResolver'; 
 
 document.addEventListener('DOMContentLoaded', fetchData);
 
