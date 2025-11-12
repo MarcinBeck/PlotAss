@@ -6,6 +6,7 @@
 const DASHBOARD_API_ENDPOINT = 'https://kggk7qj2bk.execute-api.eu-north-1.amazonaws.com/FINAL_SUCCESS/DashboardDataResolver'; 
 // ChapterManager (POST - Dodawanie rozdziału, wywoływanie analizy)
 const CHAPTER_MANAGER_ENDPOINT = 'https://hdhzbujrg3tgyc64wdnseswqxi0lhgci.lambda-url.eu-north-1.on.aws/'; 
+// API_ENDPOINT (LLM_Verifier) - Użyjemy później
 
 document.addEventListener('DOMContentLoaded', fetchData);
 
@@ -13,7 +14,7 @@ document.addEventListener('DOMContentLoaded', fetchData);
 
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
-    if (!modal) return; // Zabezpieczenie na wypadek błędu ładowania HTML
+    if (!modal) return; 
 
     modal.style.display = 'block';
     // Resetuj widok na formularz wprowadzania danych
@@ -51,7 +52,6 @@ async function fetchData() {
 
     } catch (error) {
         console.error('Błąd ładowania Dashboardu:', error);
-        // Informowanie użytkownika o błędzie
         const container = document.getElementById('dashboard-container');
         if (container) container.innerHTML = `<p style="color: red; padding: 20px;">Nie udało się załadować danych. Sprawdź konsolę: ${error.message}</p>`;
     }
@@ -64,7 +64,6 @@ function updateChapterSection(chaptersData) {
     const chars = document.getElementById('chapter-chars');
     const list = document.getElementById('chapter-list');
     
-    // Bezpieczne sprawdzanie elementów HTML
     if (count) count.textContent = chaptersData.count;
     if (chars) chars.textContent = (chaptersData.totalCharacters / 1000).toFixed(1) + 'k'; 
 
@@ -100,7 +99,7 @@ function updateCharacterSection(charactersData) {
     if (!list) return;
 
     if (charactersData.count > 0) {
-         // Na razie statyczna lista, ale kod jest bezpieczny
+         // Lista statyczna, ale z rzeczywistą liczbą (do czasu wdrożenia API)
          list.innerHTML = `
             <li><span><strong>Piotr</strong> (Ziemia)</span><button class="cta-btn">Podgląd</button></li>
             <li><span><strong>Taras</strong> (Gaja)</span><button class="cta-btn">Podgląd</button></li>
@@ -116,7 +115,6 @@ function updateCharacterSection(charactersData) {
 // Funkcja pomocnicza do tworzenia elementu listy analizy
 function createAnalysisItem(item) {
     const li = document.createElement('li');
-    // Użycie .status, by nadać klasę CSS
     const statusClass = item.status === 'Nowy' ? 'status-new' : (item.status === 'Edycja' ? 'status-edit' : 'status-none');
     
     li.className = 'result-item';
@@ -157,7 +155,6 @@ const updateAnalysisSection = (listId, countId, dataArray, newTag, editTag) => {
         if (noneCount > 0) countText += (countText ? ' / ' : '') + `${noneCount} Bez Zmian`;
 
         countElement.textContent = countText || `0 Zmian`;
-        // Nadajemy klasę na podstawie tego, czy są jakieś zmiany
         countElement.className = `status-tag ${newCount > 0 || editCount > 0 ? 'status-edit' : 'status-none'}`;
     }
 };
@@ -170,11 +167,19 @@ async function startChapterAnalysis() {
     const statusDiv = document.getElementById('analysis-status');
     const startBtn = document.getElementById('start-analysis-btn');
     
-    // ... (walidacja i blokowanie przycisku) ...
+    if (!chapterId || !title || !content) {
+        statusDiv.textContent = 'BŁĄD: Wszystkie pola muszą być wypełnione!';
+        statusDiv.style.color = 'red';
+        return;
+    }
+
+    startBtn.disabled = true;
+    startBtn.textContent = 'Trwa Analiza... (Proszę czekać)';
+    statusDiv.textContent = 'Wysyłanie i Analiza W toku...';
+    statusDiv.style.color = '#007bff';
 
     try {
-        // ... (fetch do CHAPTER_MANAGER_ENDPOINT) ...
-
+        // Logika POST do ChapterManager, który wykonuje analizę Gemini
         const response = await fetch(CHAPTER_MANAGER_ENDPOINT, {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
@@ -182,7 +187,8 @@ async function startChapterAnalysis() {
         });
         
         if (!response.ok) {
-            throw new Error(`Błąd HTTP: ${response.status}. Sprawdź logi ChapterManager.`);
+            // Logujemy błąd HTTP, ale nie pokazujemy go od razu użytkownikowi
+            throw new Error(`Błąd HTTP: ${response.status}. Sprawdź logi CloudWatch.`);
         }
         
         const data = await response.json();
@@ -192,57 +198,43 @@ async function startChapterAnalysis() {
         }
 
         // --- SUKCES ANALIZY ---
-        displayAnalysisResults(data);
+        
+        // Ponieważ backend zapisuje dane, ale nie zwraca ich do frontendu w pełnym JSON Schema
+        // Musimy zasymulować widok, dopóki nie nauczymy frontendu pobierać i parsować wynik.
+        
+        // PUSTE DANE TESTOWE (USUNIĘTO SYMULACJĘ)
+        const charChanges = []; 
+        const eventChanges = []; 
+        const worldChanges = []; 
+
+        document.getElementById('input-form').style.display = 'none';
+        document.getElementById('analysis-summary').style.display = 'block';
+
+        statusDiv.textContent = 'ANALYZED';
+        statusDiv.style.color = '#28a745';
+        document.getElementById('version-timestamp').textContent = data.VERSION_TIMESTAMP;
+
+        // RENDEROWANIE (Teraz wyświetlają się puste widoki/brak zmian)
+        updateAnalysisSection('character-analysis-list', 'char-changes-count', charChanges, 'Nowy', 'Edycja');
+        updateAnalysisSection('event-analysis-list', 'event-changes-count', eventChanges, 'Nowy', 'Edycja');
+        updateAnalysisSection('world-analysis-list', 'world-changes-count', worldChanges, 'Nowy', 'Edycja');
+
+
+        // Aktywacja przycisku zatwierdzenia
+        document.getElementById('final-confirm-btn').onclick = () => {
+            alert(`Zmiany zatwierdzone. Nowe dane: ${data.CHAPTER_ID} zostały zapisane do baz.`);
+            closeModal('chapterModal');
+        };
         
     } catch (error) {
-        // ... (obsługa błędów) ...
+        statusDiv.textContent = `BŁĄD: ${error.message}`;
+        statusDiv.style.color = 'red';
+        console.error('Błąd analizy rozdziału:', error);
+        
     } finally {
         startBtn.disabled = false;
         startBtn.textContent = 'DODAJ I ZACZNIJ ANALIZĘ';
     }
-}
-
-
-function displayAnalysisResults(data) {
-    // Logika wyświetlania wyników (Symulacja danych)
-    
-    document.getElementById('input-form').style.display = 'none';
-    document.getElementById('analysis-summary').style.display = 'block';
-
-    const statusDiv = document.getElementById('analysis-status');
-    if (statusDiv) {
-        statusDiv.textContent = 'ANALYZED';
-        statusDiv.style.color = '#28a745';
-    }
-    const timestampCode = document.getElementById('version-timestamp');
-    if (timestampCode) timestampCode.textContent = data.VERSION_TIMESTAMP;
-
-    // --- Symulowane dane z analizy (w przyszłości zastąpione przez LLM) ---
-    // (Używamy tych samych danych, co poprzednio, by zachować spójność)
-    const charChanges = [
-        { id: "PIOTR_1", name: "Piotr", status: "Edycja", details: "Wzrost odpowiedzialności po zdarzeniu." },
-        { id: "TARAS_1", name: "Taras", status: "Edycja", details: "Wzmocnienie cynizmu wobec władzy." },
-        { id: "MART_1", name: "Marta (Marek)", status: "Nowy", details: "Nowa postać wprowadzona w scenie." }
-    ];
-    const eventChanges = [
-        { id: "E-CH01...", name: "Odkrycie schronu", status: "Nowy", details: "Nowe kluczowe wydarzenie fabularne." }
-    ];
-    // Lista światów jest pusta/bez zmian
-    const worldChanges = [
-        { id: "GAJA", name: "Gaja", status: "Bez Zmian", details: "Brak zmian w metadanych świata." }
-    ];
-    // --- Koniec Symulacji ---
-
-    // RENDEROWANIE
-    updateAnalysisSection('character-analysis-list', 'char-changes-count', charChanges, 'Nowy', 'Edycja');
-    updateAnalysisSection('event-analysis-list', 'event-changes-count', eventChanges, 'Nowy', 'Edycja');
-    updateAnalysisSection('world-analysis-list', 'world-changes-count', worldChanges, 'Nowy', 'Edycja');
-
-
-    document.getElementById('final-confirm-btn').onclick = () => {
-        alert("Zmiany zatwierdzone. Dane zostały wdrożone do głównej fabuły.");
-        closeModal('chapterModal');
-    };
 }
 
 
