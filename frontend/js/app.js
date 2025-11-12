@@ -91,19 +91,34 @@ function updateChapterSection(chaptersData) {
 
 function updateCharacterSection(charactersData) {
     const count = document.getElementById('char-count');
-    if (count) count.textContent = charactersData.count;
-    
     const list = document.getElementById('char-list');
+
+    if (count) count.textContent = charactersData.count;
     if (!list) return;
 
-    if (charactersData.count > 0) {
-         list.innerHTML = `
-            <li><span><strong>Piotr</strong> (Ziemia)</span><button class="cta-btn">Podgląd</button></li>
-            <li><span><strong>Taras</strong> (Gaja)</span><button class="cta-btn">Podgląd</button></li>
-            <li><span>Marta (Marek)</span><span>Węzeł: Lorem</span><button class="cta-btn">Podgląd</button></li>
-            <li><span>Deryl (Kula)</span><button class="cta-btn">Podgląd</button></li>
-         `;
+    list.innerHTML = ''; // Czyścimy listę
+
+    if (charactersData.count === 0) {
+        list.innerHTML = '<p class="loading-text">Brak utworzonych bohaterów.</p>';
+        return;
     }
+
+    // Używamy dynamicznej listy zwróconej przez DashboardDataResolver
+    const displayList = charactersData.list.slice(0, 4);
+
+    displayList.forEach(char => {
+        const li = document.createElement('li');
+        // Upewniamy się, że nazwa i węzeł są bezpieczne (na wypadek null)
+        const charName = char.IMIE || 'N/A';
+        const charWorld = char.A_DANE_OGOLNE?.WEZEL_ID || 'Nieznany'; 
+        
+        li.innerHTML = `
+            <span><strong>${charName.substring(0, 15)}</strong></span>
+            <span>Węzeł: ${charWorld.substring(0, 10)}</span>
+            <button class="cta-btn" onclick="viewCharacterDetails('${char.ID}')">Podgląd</button>
+        `;
+        list.appendChild(li);
+    });
 }
 
 
