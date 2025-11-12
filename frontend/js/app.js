@@ -1,3 +1,5 @@
+// Plik: frontend/js/app.js (OSTATECZNIE POPRAWIONY ZAKRES ZMIENNYCH)
+
 // ====================================================================
 // PAMIĘTAJ: Wklej swoje adresy URL z API Gateway!
 // ====================================================================
@@ -161,7 +163,7 @@ async function startChapterAnalysis() {
     const content = document.getElementById('modal-chapter-content').value;
     const statusDiv = document.getElementById('analysis-status');
     const startBtn = document.getElementById('start-analysis-btn');
-    const summaryElement = document.getElementById('gemini-summary-text'); // Element streszczenia
+    const summaryElement = document.getElementById('gemini-summary-text'); 
 
     // Poprawiona walidacja
     if (!chapterId || !title || !content) {
@@ -175,7 +177,7 @@ async function startChapterAnalysis() {
     statusDiv.textContent = 'Wysyłanie i Analiza W toku...';
     statusDiv.style.color = '#007bff';
 
-    let data = null; // Zabezpieczenie przed ReferenceError
+    let data = null; // Zabezpieczenie: deklaracja let na początku funkcji
     
     try {
         const response = await fetch(CHAPTER_MANAGER_ENDPOINT, {
