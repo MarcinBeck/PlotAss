@@ -6,7 +6,6 @@
 const DASHBOARD_API_ENDPOINT = 'https://kggk7qj2bk.execute-api.eu-north-1.amazonaws.com/FINAL_SUCCESS/DashboardDataResolver'; 
 // ChapterManager (POST - Dodawanie rozdziału, wywoływanie analizy)
 const CHAPTER_MANAGER_ENDPOINT = 'https://hdhzbujrg3tgyc64wdnseswqxi0lhgci.lambda-url.eu-north-1.on.aws/'; 
-// API_ENDPOINT (LLM_Verifier) - Użyjemy później
 
 document.addEventListener('DOMContentLoaded', fetchData);
 
@@ -166,13 +165,6 @@ async function startChapterAnalysis() {
     const content = document.getElementById('modal-chapter-content').value;
     const statusDiv = document.getElementById('analysis-status');
     const startBtn = document.getElementById('start-analysis-btn');
-    const summaryElement = document.getElementById('gemini-summary-text');
-
-if (summaryElement && data.ANALYSIS_SUMMARY) {
-    summaryElement.textContent = data.ANALYSIS_SUMMARY;
-} else if (summaryElement) {
-    summaryElement.textContent = "Analiza Gemini nie dostarczyła podsumowania (sprawdź prompt).";
-}
     
     if (!chapterId || !title || !content) {
         statusDiv.textContent = 'BŁĄD: Wszystkie pola muszą być wypełnione!';
@@ -185,8 +177,9 @@ if (summaryElement && data.ANALYSIS_SUMMARY) {
     statusDiv.textContent = 'Wysyłanie i Analiza W toku...';
     statusDiv.style.color = '#007bff';
 
+    let data = null; // Zabezpieczenie przed ReferenceError
+    
     try {
-        // Logika POST do ChapterManager, który wykonuje analizę Gemini
         const response = await fetch(CHAPTER_MANAGER_ENDPOINT, {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
@@ -194,11 +187,10 @@ if (summaryElement && data.ANALYSIS_SUMMARY) {
         });
         
         if (!response.ok) {
-            // Logujemy błąd HTTP, ale nie pokazujemy go od razu użytkownikowi
             throw new Error(`Błąd HTTP: ${response.status}. Sprawdź logi CloudWatch.`);
         }
         
-        const data = await response.json();
+        data = await response.json(); // Przypisanie do zmiennej "data" w zasięgu funkcji
         
         if (data.error) {
             throw new Error(`BŁĄD LAMBDA: ${data.error}`);
@@ -206,22 +198,20 @@ if (summaryElement && data.ANALYSIS_SUMMARY) {
 
         // --- SUKCES ANALIZY ---
         
-        // Ponieważ backend zapisuje dane, ale nie zwraca ich do frontendu w pełnym JSON Schema
-        // Musimy zasymulować widok, dopóki nie nauczymy frontendu pobierać i parsować wynik.
-        
-        // PUSTE DANE TESTOWE (USUNIĘTO SYMULACJĘ)
+        // --- Usunięcie fejkowych danych z Modala ---
+        // Ponieważ backend zwraca tylko status, na razie wyświetlamy, że nie ma zmian
         const charChanges = []; 
         const eventChanges = []; 
         const worldChanges = []; 
-
+        
         document.getElementById('input-form').style.display = 'none';
         document.getElementById('analysis-summary').style.display = 'block';
 
-        statusDiv.textContent = 'ANALYZED';
+        statusDiv.textContent = data.STATUS || 'ANALYZED';
         statusDiv.style.color = '#28a745';
         document.getElementById('version-timestamp').textContent = data.VERSION_TIMESTAMP;
-
-        // RENDEROWANIE (Teraz wyświetlają się puste widoki/brak zmian)
+        
+        // RENDEROWANIE CZYSTYCH DANYCH
         updateAnalysisSection('character-analysis-list', 'char-changes-count', charChanges, 'Nowy', 'Edycja');
         updateAnalysisSection('event-analysis-list', 'event-changes-count', eventChanges, 'Nowy', 'Edycja');
         updateAnalysisSection('world-analysis-list', 'world-changes-count', worldChanges, 'Nowy', 'Edycja');
