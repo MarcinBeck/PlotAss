@@ -16,7 +16,6 @@ function openModal(modalId) {
     if (!modal) return; 
 
     modal.style.display = 'block';
-    // Resetuj widok na formularz wprowadzania danych
     document.getElementById('input-form').style.display = 'block';
     document.getElementById('analysis-summary').style.display = 'none';
     
@@ -27,11 +26,9 @@ function openModal(modalId) {
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.style.display = 'none';
-    // Po zamknięciu odświeżamy Dashboard
     fetchData();
 }
 
-// Funkcja wywoływana z Dashboardu
 function viewAddChapter() {
     openModal('chapterModal');
 }
@@ -56,7 +53,7 @@ async function fetchData() {
     }
 }
 
-// --- FUNKCJE AKTUALIZUJĄCE SEKCJE ---
+// --- FUNKCJE AKTUALIZUJĄCE SEKCJE (Przykładowe) ---
 
 function updateChapterSection(chaptersData) {
     const count = document.getElementById('chapter-count');
@@ -98,7 +95,6 @@ function updateCharacterSection(charactersData) {
     if (!list) return;
 
     if (charactersData.count > 0) {
-         // Lista statyczna, ale z rzeczywistą liczbą (do czasu wdrożenia API)
          list.innerHTML = `
             <li><span><strong>Piotr</strong> (Ziemia)</span><button class="cta-btn">Podgląd</button></li>
             <li><span><strong>Taras</strong> (Gaja)</span><button class="cta-btn">Podgląd</button></li>
@@ -165,14 +161,9 @@ async function startChapterAnalysis() {
     const content = document.getElementById('modal-chapter-content').value;
     const statusDiv = document.getElementById('analysis-status');
     const startBtn = document.getElementById('start-analysis-btn');
-    const summaryElement = document.getElementById('gemini-summary-text');
+    const summaryElement = document.getElementById('gemini-summary-text'); // Element streszczenia
 
-    if (summaryElement && data.ANALYSIS_SUMMARY) {
-        summaryElement.textContent = data.ANALYSIS_SUMMARY; // Używamy danych z JSON
-    } else if (summaryElement) {
-        summaryElement.textContent = "Analiza Gemini nie dostarczyła podsumowania. Sprawdź logi CloudWatch i klucz API.";
-    }
-    
+    // Poprawiona walidacja
     if (!chapterId || !title || !content) {
         statusDiv.textContent = 'BŁĄD: Wszystkie pola muszą być wypełnione!';
         statusDiv.style.color = 'red';
@@ -197,7 +188,7 @@ async function startChapterAnalysis() {
             throw new Error(`Błąd HTTP: ${response.status}. Sprawdź logi CloudWatch.`);
         }
         
-        data = await response.json(); // Przypisanie do zmiennej "data" w zasięgu funkcji
+        data = await response.json(); // Przypisanie do zmiennej "data"
         
         if (data.error) {
             throw new Error(`BŁĄD LAMBDA: ${data.error}`);
@@ -205,8 +196,14 @@ async function startChapterAnalysis() {
 
         // --- SUKCES ANALIZY ---
         
-        // --- Usunięcie fejkowych danych z Modala ---
-        // Ponieważ backend zwraca tylko status, na razie wyświetlamy, że nie ma zmian
+        // Wyświetlanie RZECZYWISTEJ ANALIZY (z Lambda)
+        if (summaryElement && data.ANALYSIS_SUMMARY) {
+            summaryElement.textContent = data.ANALYSIS_SUMMARY; 
+        } else if (summaryElement) {
+            summaryElement.textContent = "Analiza Gemini nie dostarczyła podsumowania.";
+        }
+        
+        // PUSTE DANE TESTOWE (USUNIĘTO SYMULACJĘ)
         const charChanges = []; 
         const eventChanges = []; 
         const worldChanges = []; 
