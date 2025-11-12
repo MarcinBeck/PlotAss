@@ -11,7 +11,7 @@
     <header>
         <h1>LLM Fabularny Asystent</h1>
         <nav>
-            <a href="#">1.0.10</a>
+            <a href="#">1.0.11</a>
             <a href="#">Postacie</a>
             <a href="#">Fabuła</a>
             <a href="#">Światy</a>
@@ -61,8 +61,8 @@
                 <h3>Fabuła (Eventy)</h3>
             </div>
             
-            <div class="summary-box" style="grid-template-columns: 1fr;">
-                <div class="summary-item">Ilość wydarzeń: <strong>48</strong></div>
+            <div class="-box" style="grid-template-columns: 1fr;">
+                <div class="-item">Ilość wydarzeń: <strong>48</strong></div>
             </div>
             
             <h4>Ostatnie Zdarzenia:</h4>
@@ -81,8 +81,8 @@
                 <h3>Światy/Lokacje</h3>
             </div>
             
-            <div class="summary-box" style="grid-template-columns: 1fr;">
-                <div class="summary-item">Liczba Światów: <strong>7</strong></div>
+            <div class="-box" style="grid-template-columns: 1fr;">
+                <div class="-item">Liczba Światów: <strong>7</strong></div>
             </div>
             
             <h4>Ostatnio edytowane:</h4>
@@ -120,6 +120,13 @@
                 <h3>Status Analizy: <span id="analysis-status"></span></h3>
                 <p>Identyfikator wersji: <code id="version-timestamp"></code></p>
                 <p>Wszystkie zmiany zostały automatycznie przeanalizowane przez system LLM. Proszę zweryfikuj zmiany i zatwierdź.</p>
+
+                <div class="analysis-section" style="background-color: #e6f7ff;">
+    <div class="result-header">
+        <span>Streszczenie Analizy (Gemini):</span>
+    </div>
+    <p id="gemini-summary-text" style="margin: 0; font-style: italic;">Oczekiwanie na streszczenie...</p>
+</div>
                 
                 <div class="analysis-section">
                     <div class="result-header">
