@@ -165,6 +165,13 @@ async function startChapterAnalysis() {
     const content = document.getElementById('modal-chapter-content').value;
     const statusDiv = document.getElementById('analysis-status');
     const startBtn = document.getElementById('start-analysis-btn');
+    const summaryElement = document.getElementById('gemini-summary-text');
+
+    if (summaryElement && data.ANALYSIS_SUMMARY) {
+        summaryElement.textContent = data.ANALYSIS_SUMMARY; // Używamy danych z JSON
+    } else if (summaryElement) {
+        summaryElement.textContent = "Analiza Gemini nie dostarczyła podsumowania. Sprawdź logi CloudWatch i klucz API.";
+    }
     
     if (!chapterId || !title || !content) {
         statusDiv.textContent = 'BŁĄD: Wszystkie pola muszą być wypełnione!';
