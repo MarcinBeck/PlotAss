@@ -11,47 +11,169 @@ const CHAPTER_MANAGER_ENDPOINT = 'https://hdhzbujrg3tgyc64wdnseswqxi0lhgci.lambd
 
 document.addEventListener('DOMContentLoaded', fetchData);
 
+// === Zmienne Globalne dla Workflow ===
+let rawChapterDetails = {}; // Przechowuje dane z KROKU 1: { chapterId: 'CH-X', versionTimestamp: 'YYYY-MM-DDTHH:MM:SSZ', title: 'Tytuł' }
+
 // --- FUNKCJE NAWIGACYJNE MODALA ---
 
-function openModal(modalId) {
+function openModal(modalId, step = 1) {
     const modal = document.getElementById(modalId);
     if (!modal) return; 
 
     modal.style.display = 'block';
-    document.getElementById('input-form').style.display = 'block';
-    document.getElementById('analysis-summary').style.display = 'none';
     
-    // Czyścimy poprzednie dane modala
-    document.getElementById('modal-chapter-id').value = 'CH-01';
-    document.getElementById('modal-chapter-title').value = '';
-    document.getElementById('modal-chapter-content').value = '';
-    document.getElementById('gemini-summary-text').textContent = 'Oczekiwanie na streszczenie...';
-    document.getElementById('analysis-chapter-title').textContent = '';
-    document.getElementById('version-timestamp').textContent = '';
-    document.getElementById('char-count-display').textContent = '0 Postaci';
-    // Wyczyść listę i ustaw placeholder
-    const charList = document.getElementById('character-analysis-list');
-    if (charList) {
-        charList.innerHTML = '<p style="margin: 0; font-style: italic; color: #696969;">Lista bohaterów.</p>';
-        charList.style.border = 'none'; // Ustawienie z dashboard.html
+    // Resetowanie do KROKU 1
+    if (step === 1) {
+        document.getElementById('step-1-input').style.display = 'block';
+        document.getElementById('step-2-json').style.display = 'none';
+        
+        // Czyścimy pola
+        document.getElementById('modal-chapter-number').value = '1';
+        document.getElementById('modal-chapter-title').value = '';
+        document.getElementById('modal-chapter-content').value = '';
+        rawChapterDetails = {}; // Resetuj szczegóły surowej wersji
+    } else if (step === 2) {
+        // Przejście do KROKU 2
+        document.getElementById('step-1-input').style.display = 'none';
+        document.getElementById('step-2-json').style.display = 'block';
+        
+        // Wyświetlanie danych z KROKU 1
+        const chapDisplay = document.getElementById('json-chapter-display');
+        const verDisplay = document.getElementById('json-version-timestamp');
+
+        if (rawChapterDetails.title) {
+             chapDisplay.textContent = rawChapterDetails.title;
+             verDisplay.textContent = rawChapterDetails.versionTimestamp;
+        } else {
+            chapDisplay.textContent = 'Brak danych RAW';
+            verDisplay.textContent = '';
+        }
+
+        // Czyścimy pole JSON
+        document.getElementById('modal-json-content').value = '';
     }
-
-
-    const statusDiv = document.getElementById('analysis-status');
-    if (statusDiv) statusDiv.textContent = 'Oczekujące...';
 }
 
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.style.display = 'none';
-    fetchData();
+    fetchData(); // Odśwież dashboard
 }
 
 function viewAddChapter() {
-    openModal('chapterModal');
+    openModal('chapterModal', 1); // Zawsze zaczynamy od KROKU 1
 }
 
-// --- FUNKCJA GŁÓWNA: ŁADOWANIE DASHBOARDU ---
+// --- FUNKCJA KROK 1: ZAPIS SUROWEJ TREŚCI (RAW) ---
+
+async function saveChapterRaw() {
+    const chapterNumber = document.getElementById('modal-chapter-number').value;
+    const title = document.getElementById('modal-chapter-title').value;
+    const content = document.getElementById('modal-chapter-content').value;
+    const startBtn = document.getElementById('start-raw-save-btn');
+    
+    // Walidacja
+    if (!chapterNumber || !title || !content) {
+        alert('BŁĄD: Numer, Tytuł i Treść muszą być wypełnione!');
+        return;
+    }
+
+    startBtn.disabled = true;
+    startBtn.textContent = 'Trwa Zapis RAW...';
+    
+    try {
+        const response = await fetch(CHAPTER_MANAGER_ENDPOINT, {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chapterNumber, title, content })
+        });
+        
+        if (!response.ok) {
+            const errorBody = await response.json().catch(() => ({ error: 'Brak szczegółów w JSON' }));
+            throw new Error(`Błąd HTTP: ${response.status}. Szczegóły: ${errorBody.error || 'Nieznany błąd backendu'}`);
+        }
+        
+        const data = await response.json(); 
+        
+        if (data.STATUS === 'RAW_SAVED_READY_FOR_ANALYSIS') {
+            rawChapterDetails = {
+                chapterId: data.CHAPTER_ID,
+                versionTimestamp: data.VERSION_TIMESTAMP,
+                title: data.TITLE
+            };
+            alert(`Pomyślnie zapisano RAW: ${data.TITLE}. Przejdź do KROKU 2.`);
+            openModal('chapterModal', 2); // Przejście do KROKU 2
+        } else {
+             throw new Error('Nieoczekiwany status z serwera: ' + data.STATUS);
+        }
+
+    } catch (error) {
+        alert(`BŁĄD KROKU 1: ${error.message}`);
+        console.error('Błąd zapisu RAW:', error);
+        
+    } finally {
+        startBtn.disabled = false;
+        startBtn.textContent = '1. ZAPISZ RAW I PRZEJDŹ DO ANALIZY';
+    }
+}
+
+
+// --- FUNKCJA KROK 2: WYSYŁANIE JSONA (UPDATE) ---
+
+async function startJsonAnalysis() {
+    const jsonContent = document.getElementById('modal-json-content').value;
+    const startBtn = document.getElementById('start-json-analysis-btn');
+    
+    if (!jsonContent) {
+        alert('BŁĄD: Pole JSON nie może być puste!');
+        return;
+    }
+
+    startBtn.disabled = true;
+    startBtn.textContent = 'Trwa Zapis Analizy...';
+
+    let jsonParsed;
+    try {
+        jsonParsed = JSON.parse(jsonContent);
+    } catch (e) {
+        alert('BŁĄD: Niepoprawny format JSON!');
+        startBtn.disabled = false;
+        startBtn.textContent = '2. ZATWIERDŹ JSON I ZAPISZ ANALIZĘ';
+        return;
+    }
+
+    // Dodajemy dane KROKU 1 do wysyłanego obiektu JSONa
+    jsonParsed.rawVersionTimestamp = rawChapterDetails.versionTimestamp;
+    
+    try {
+        const response = await fetch(CHAPTER_MANAGER_ENDPOINT, {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fullJsonData: jsonParsed }) // Wysyłamy cały JSON jako zagnieżdżony obiekt
+        });
+        
+        if (!response.ok) {
+            const errorBody = await response.json().catch(() => ({ error: 'Brak szczegółów w JSON' }));
+            throw new Error(`Błąd HTTP: ${response.status}. Szczegóły: ${errorBody.error || 'Nieznany błąd backendu'}`);
+        }
+        
+        const data = await response.json(); 
+        
+        alert(`Pomyślnie zapisano analizę dla ${rawChapterDetails.title}.`);
+        closeModal('chapterModal'); // Zamykamy modal i odświeżamy dashboard
+
+    } catch (error) {
+        alert(`BŁĄD KROKU 2 (JSON): ${error.message}`);
+        console.error('Błąd analizy JSON:', error);
+        
+    } finally {
+        startBtn.disabled = false;
+        startBtn.textContent = '2. ZATWIERDŹ JSON I ZAPISZ ANALIZĘ';
+    }
+}
+
+
+// --- POZOSTAŁE FUNKCJE (bez zmian lub minimalne zmiany) ---
 
 async function fetchData() {
     try {
@@ -70,8 +192,6 @@ async function fetchData() {
         if (container) container.innerHTML = `<p style="color: red; padding: 20px;">Nie udało się załadować danych. Sprawdź konsolę: ${error.message}</p>`;
     }
 }
-
-// --- FUNKCJE AKTUALIZUJĄCE SEKCJE (Przykładowe) ---
 
 function updateChapterSection(chaptersData) {
     const count = document.getElementById('chapter-count');
@@ -93,8 +213,10 @@ function updateChapterSection(chaptersData) {
     chaptersData.lastUpdates.forEach(chapter => {
         const li = document.createElement('li');
         const date = new Date(chapter.VERSION_TIMESTAMP).toLocaleDateString('pl-PL');
-        const charCount = (chapter.CONTENT.length / 1000).toFixed(1) + 'k';
-        const title = chapter.TITLE || chapter.CHAPTER_ID;
+        const charCount = (chapter.CONTENT?.length / 1000).toFixed(1) + 'k';
+
+        // Preferujemy pole TITLE
+        const title = chapter.TITLE || chapter.CHAPTER_ID; 
 
         li.innerHTML = `
             <span><strong>${title.substring(0, 20)}</strong></span>
@@ -135,119 +257,4 @@ function updateCharacterSection(charactersData) {
         `;
         list.appendChild(li);
     });
-}
-
-
-// --- FUNKCJE CTA ---
-
-// Funkcja do nawigacji do podglądu rozdziału
-function viewChapter(id) {
-    alert(`Otwieram podgląd rozdziału: ${id}. Logika nawigacji zostanie zaimplementowana później.`);
-}
-
-// USUNIĘTO funkcje createAnalysisItem i updateAnalysisSection
-
-// --- FUNKCJA GŁÓWNA: ANALIZA W MODALU ---
-
-async function startChapterAnalysis() {
-    const chapterId = document.getElementById('modal-chapter-id').value;
-    const title = document.getElementById('modal-chapter-title').value;
-    const content = document.getElementById('modal-chapter-content').value;
-    const statusDiv = document.getElementById('analysis-status');
-    const startBtn = document.getElementById('start-analysis-btn');
-    const summaryElement = document.getElementById('gemini-summary-text'); 
-
-    // Poprawiona walidacja
-    if (!chapterId || !title || !content) {
-        statusDiv.textContent = 'BŁĄD: Wszystkie pola muszą być wypełnione!';
-        statusDiv.style.color = 'red';
-        return;
-    }
-
-    startBtn.disabled = true;
-    startBtn.textContent = 'Trwa Analiza... (Proszę czekać)';
-    statusDiv.textContent = 'Wysyłanie i Analiza W toku...';
-    statusDiv.style.color = '#007bff';
-
-    let data = null; // Zabezpieczenie: deklaracja let na początku funkcji
-    
-    try {
-        const response = await fetch(CHAPTER_MANAGER_ENDPOINT, {
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chapterId, title, content })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Błąd HTTP: ${response.status}. Sprawdź logi CloudWatch.`);
-        }
-        
-        data = await response.json(); // Przypisanie do zmiennej "data"
-        
-        if (data.error) {
-            throw new Error(`BŁĄD LAMBDA: ${data.error}`);
-        }
-
-        // --- SUKCES ANALIZY ---
-        
-        const identifiedCharacters = data.IDENTIFIED_CHARACTERS || [];
-        const analysisSummary = data.ANALYSIS_SUMMARY || "Analiza Gemini nie dostarczyła podsumowania.";
-        
-        // 1. Zmiana widoku w Modalu
-        document.getElementById('input-form').style.display = 'none';
-        document.getElementById('analysis-summary').style.display = 'block';
-
-        // 2. Wyświetlanie podstawowych informacji: STATUS, DATE, TITLE
-        statusDiv.textContent = data.STATUS || 'ANALYZED';
-        statusDiv.style.color = '#28a745';
-        // Formatowanie daty dla lepszej czytelności
-        document.getElementById('version-timestamp').textContent = new Date(data.VERSION_TIMESTAMP).toLocaleString('pl-PL'); 
-        document.getElementById('analysis-chapter-title').textContent = title; 
-        
-        // 3. Wyświetlanie RZECZYWISTEGO Streszczenia
-        if (summaryElement) {
-            summaryElement.textContent = analysisSummary; 
-        }
-
-        // 4. Wyświetlanie Bohaterów
-        const charList = document.getElementById('character-analysis-list');
-        const charCountDisplay = document.getElementById('char-count-display');
-        
-        if (charList) {
-             charList.innerHTML = ''; // Czyścimy placeholder
-             charCountDisplay.textContent = `${identifiedCharacters.length} Postaci`;
-             charCountDisplay.className = `status-tag ${identifiedCharacters.length > 0 ? 'status-edit' : 'status-none'}`;
-             
-             if (identifiedCharacters.length > 0) {
-                 identifiedCharacters.forEach((name, index) => {
-                     const li = document.createElement('li');
-                     // Używamy prostej struktury z listą
-                     li.innerHTML = `<span>${name}</span>`;
-                     // Dodajemy linię rozdzielającą z wyjątkiem ostatniego elementu
-                     li.style.padding = '5px 0';
-                     if (index < identifiedCharacters.length - 1) {
-                         li.style.borderBottom = '1px dotted #ccc';
-                     }
-                     charList.appendChild(li);
-                 });
-             } else {
-                  charList.innerHTML = '<p style="color:#696969; font-size:0.9em;">Brak zidentyfikowanych postaci.</p>';
-             }
-        }
-        
-        // 5. Aktywacja przycisku zatwierdzenia
-        document.getElementById('final-confirm-btn').onclick = () => {
-            alert(`Zmiany zatwierdzone. Nowe dane: ${data.CHAPTER_ID} zostały zapisane do baz.`);
-            closeModal('chapterModal');
-        };
-        
-    } catch (error) {
-        statusDiv.textContent = `BŁĄD: ${error.message}`;
-        statusDiv.style.color = 'red';
-        console.error('Błąd analizy rozdziału:', error);
-        
-    } finally {
-        startBtn.disabled = false;
-        startBtn.textContent = 'DODAJ I ZACZNIJ ANALIZĘ';
-    }
 }
