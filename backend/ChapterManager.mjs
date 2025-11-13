@@ -1,7 +1,7 @@
-// Plik: index.mjs (ChapterManager - FINALNA WERSJA STABILNA Z REGEX PARSOWANIEM)
+// Plik: index.mjs (ChapterManager - LOGIKA GRANULARNEGO ZAPISU SEKCJI)
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, UpdateCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 
 // Klienci AWS
 const client = new DynamoDBClient({});
@@ -11,199 +11,185 @@ const db = DynamoDBDocumentClient.from(client);
 const CHAPTERS_TABLE = 'LLM_Chapters_V2'; 
 const PLOT_EVENTS_TABLE = 'LLM_PlotEvents'; 
 const CHARACTERS_TABLE = 'LLM_Characters'; 
+const WORLDS_TABLE = 'LLM_Worlds'; 
 
 const CHAPTERS_ID = 'CHAPTER_ID'; 
 const VERSION_ID = 'VERSION_TIMESTAMP'; 
-const ID_ZDARZENIA = 'ID_ZDARZENIA'; 
 
-// === KONFIGURACJA GEMINI BEZ SDK (Fetch API) ===
-const GEMINI_API_KEY = "AIzaSyCxPF48VyaW8AKmcZuMifuOAFlDFteHfqg"; 
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"; 
-
-const headers = { 
-    "Content-Type": "application/json"
-};
 
 // =======================================================
-// FUNKCJA POMOCNICZA: CZYŚCI ID
+// FUNKCJA POMOCNICZA: CZYŚCI ID (USUNIĘTO TEMP_)
 // =======================================================
 
-// Tworzy stabilny, tymczasowy ID z imienia
+// Tworzy stabilny klucz Partycjonujący z imienia, bez prefiksu TEMP_
 const cleanCharId = (name) => {
     if (typeof name !== 'string' || name.length === 0) return null;
-    const safeName = name.replace(/[^A-Za-z0-9]/g, ''); 
-    return `TEMP_${safeName.toUpperCase()}`;
-};
-
-// =======================================================
-// FUNKCJA POMOCNICZA: Sprawdza i tworzy postać bazową
-// =======================================================
-
-const checkOrCreateCharacter = async (dbClient, charId, charName) => {
-    // 1. Sprawdź, czy postać istnieje
-    const { Item } = await dbClient.send(new GetCommand({
-        TableName: CHARACTERS_TABLE,
-        Key: { ID: charId }
-    }));
-
-    if (Item) {
-        return false; // Postać już istnieje
-    }
-
-    // 2. Jeśli nie, stwórz bazowy rekord
-    const newCharacter = {
-        ID: charId,
-        IMIE: charName, 
-        A_DANE_OGOLNE: {
-            ROLA: "Nowa postać (dynamicznie dodana)",
-            WEZEL_ID: "Nieznany"
-        },
-        C_3_HISTORIA_ZDARZEN: [] 
-    };
-
-    await dbClient.send(new PutCommand({
-        TableName: CHARACTERS_TABLE,
-        Item: newCharacter
-    }));
     
-    console.log(`[INIT] Stworzono nowy rekord postaci: ${charId}`);
-    return true; 
+    // Usuwamy znaki inne niż litery, cyfry i polskie znaki
+    const safeName = name.replace(/[^A-Za-z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, ''); 
+    
+    // Jeśli po usunięciu zostało puste imię lub jest za krótkie na sensowny klucz
+    if (safeName.length < 2) return null; 
+    
+    // Używamy bezpośrednio nazwy (wielkie litery) jako klucza partycjonującego
+    return safeName.toUpperCase(); 
 };
 
 
 // =======================================================
-// LOGIKA ANALIZY (Używa Fetch do Gemini)
+// KROK 1: Zapis Surowego Rozdziału (Raw Save)
+// ... (logika bez zmian) ...
 // =======================================================
 
-const runAnalysisLogic = async (dbClient, chapterData) => {
+const saveRawChapter = async (dbClient, chapterId, title, content) => {
+    const versionTimestamp = new Date().toISOString(); 
     
-    const { CHAPTER_ID, VERSION_TIMESTAMP, CONTENT } = chapterData;
-
-    // NOWY PROMPT: Żądamy zwykłego tekstu z listą na końcu
-    const prompt = `Jesteś ekspertem. Wykonaj analizę. 
-    1. Zidentyfikuj WSZYSTKIE unikalne postacie (tylko imiona/pseudonimy) aktywne w tym rozdziale. Zwróć JEDYNIE listę ich imion w ostatniej linii odpowiedzi, ODDZIELAJĄC JE TYLKO PRZECINKAMI. 
-    2. Stwórz krótkie streszczenie (max 300 znaków). 
-    
-    Treść rozdziału: ${CONTENT.substring(0, 1000)}...`;
-
-    const body = {
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: "text/plain" }
+    const chapterItem = {
+        [CHAPTERS_ID]: chapterId, 
+        [VERSION_ID]: versionTimestamp, 
+        TITLE: title,
+        CONTENT: content, 
+        STATUS: 'RAW' 
     };
     
-    let analysisText;
-    let attempt = 0;
-    const MAX_RETRIES = 5; 
-    
-    while (attempt < MAX_RETRIES) {
-        attempt++;
-        
-        try {
-            const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-            });
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                if ((response.status === 503 || response.status === 429) && attempt < MAX_RETRIES) {
-                    await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
-                    continue; 
-                }
-                throw new Error(`Błąd API: ${response.status} - ${errorText.substring(0, 80)}`);
-            }
+    await dbClient.send(new PutCommand({ TableName: CHAPTERS_TABLE, Item: chapterItem }));
 
-            const geminiResponse = await response.json();
-            analysisText = geminiResponse.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (!analysisText) {
-                throw new Error("Błąd: Gemini nie zwróciło treści analitycznej.");
-            }
-            
-            break; 
-
-        } catch (e) {
-            if (attempt === MAX_RETRIES) {
-                throw new Error(`Osiągnięto limit ponowień. Błąd: ${e.message}`);
-            }
-            const delay = 1000 * Math.pow(2, attempt);
-            console.warn(`Błąd sieciowy: ${e.message}. Ponawiam za ${delay}ms.`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-        }
-    }
-
-
-    // --- KLUCZOWE PARSOWANIE TEKSTU (REGEX/SPLIT) ---
-    const lines = analysisText.split('\n').filter(line => line.trim().length > 0);
-    const lastLine = lines[lines.length - 1] || "";
-    
-    // UŻYWAJEMY REGEX/SPLIT DO WYŁUSKANIA IMION Z OSTATNIEJ LINII
-    const identifiedNames = lastLine
-        .replace(/[^A-Za-ząćęłńóśźżĄĆĘŁŃÓŚŹŻ,]/g, '') // Usuwa wszystko poza literami i przecinkami
-        .split(',')
-        .map(name => name.trim())
-        .filter(name => name.length > 2); // Filtruj krótkie słowa
-        
-    // Tworzymy listę obiektów {id: TEMP_NAME, name: Name}
-    const charactersToInit = identifiedNames.map(name => ({
-        id: cleanCharId(name),
-        name: name
-    }));
-    
-    // --- ZAPIS DANYCH Z RZECZYWISTEJ ANALIZY ---
-
-    const eventId = `E-${CHAPTER_ID}-${VERSION_TIMESTAMP.substring(11, 23).replace(/\D/g, '')}`;
-    const analysisSummary = analysisText.substring(0, 600); // Używamy początku tekstu jako podsumowania
-    
-    
-    // 1. Sprawdzenie i utworzenie brakujących rekordów postaci
-    await Promise.all(charactersToInit.map(obj => checkOrCreateCharacter(dbClient, obj.id, obj.name)));
-
-
-    // 2. Zapisz Zdarzenie Fabularne
-    const plotEvent = {
-        [ID_ZDARZENIA]: eventId, 
-        SUMMARY: analysisSummary, 
-        SOURCE_CHAPTER_ID: CHAPTER_ID,
-        SOURCE_VERSION: VERSION_TIMESTAMP,
-        FULL_ANALYSIS: analysisText, // Cała odpowiedź Gemini
-        IDENTIFIED_CHARACTERS: charactersToInit.map(obj => obj.id) // Lista ID
+    return { 
+        message: `Rozdział ${chapterId} zapisany jako RAW. Przejdź do analizy.`, 
+        CHAPTER_ID: chapterId,
+        VERSION_TIMESTAMP: versionTimestamp,
+        TITLE: title
     };
-    await dbClient.send(new PutCommand({ TableName: PLOT_EVENTS_TABLE, Item: plotEvent }));
+};
 
-    // 3. Zaktualizuj Profile Postaci (Dodajemy logi zmian)
-    for (const charData of charactersToInit) { 
-        const logEntry = `[${eventId}] - ANALIZA GEMINI: ${analysisSummary}`;
+// =======================================================
+// KROK 3: Granularne Zapisy Sekcji
+// =======================================================
 
-        await dbClient.send(new UpdateCommand({
-            TableName: CHARACTERS_TABLE,
-            Key: { ID: charData.id },
-            UpdateExpression: "SET #log = list_append(if_not_exists(#log, :empty_list), :new_entry)",
-            ExpressionAttributeNames: { "#log": "C_3_HISTORIA_ZDARZEN" },
-            ExpressionAttributeValues: { ":new_entry": [logEntry], ":empty_list": [] },
-        }));
-    }
+const processSectionUpdate = async (dbClient, chapterId, chapterNumber, currentTimestamp, rawTimestamp, sectionData, sectionType) => {
     
-    // 4. Zmień STATUS Rozdziału na ANALYZED
-    await dbClient.send(new UpdateCommand({
+    // 0. Pobranie RAW CONTENT (potrzebne do finalnego zapisu rozdziału)
+    const { Item: rawChapter } = await dbClient.send(new GetCommand({
         TableName: CHAPTERS_TABLE,
-        Key: { [CHAPTERS_ID]: CHAPTER_ID, [VERSION_ID]: VERSION_TIMESTAMP },
-        UpdateExpression: "SET #st = :st, #sum = :sum",
-        ExpressionAttributeNames: { "#st": "STATUS", "#sum": "SUMMARY" },
-        ExpressionAttributeValues: { ":st": "ANALYZED", ":sum": analysisSummary }
+        Key: { 
+            [CHAPTERS_ID]: chapterId, 
+            [VERSION_ID]: rawTimestamp 
+        }
     }));
     
-    console.log(`ANALIZA ZAKOŃCZONA: Zidentyfikowano ${charactersToInit.length} postaci.`);
-    return { success: true, analysisSummary: analysisSummary };
+    if (!rawChapter) {
+        throw new Error(`Nie znaleziono surowej wersji rozdziału: ${chapterId} z datą ${rawTimestamp}`);
+    }
+
+    switch (sectionType) {
+        case 'CHARACTERS':
+            const identifiedCharactersPromises = (sectionData.postacie || [])
+                .map(obj => {
+                    const charId = cleanCharId(obj.imie);
+                    
+                    if (!charId) { 
+                        console.error(`BŁĄD DANYCH: Pominięto postać z powodu nieprawidłowego klucza. Nazwa: "${obj.imie}"`);
+                        return null; 
+                    }
+                    
+                    const characterEvolutionEntry = {
+                        ID: charId, // Partition Key (bez TEMP_)
+                        SOURCE_VERSION: `${chapterId}#${currentTimestamp}`, // Sort Key
+                        IMIE: obj.imie,
+                        ROZDZIAL_NUMER: chapterNumber,
+                        SOURCE_CHAPTER_ID: chapterId,
+                        ROLA_W_ROZDZIALE: obj.rola_w_rozdziale,
+                        SZCZEGOLY: obj, 
+                        DATA_DODANIA: currentTimestamp
+                    };
+                    return dbClient.send(new PutCommand({ TableName: CHARACTERS_TABLE, Item: characterEvolutionEntry }));
+                })
+                .filter(p => p !== null); 
+
+            await Promise.all(identifiedCharactersPromises);
+            console.log(`Zapisano ${identifiedCharactersPromises.length} rekordów postaci.`);
+            break;
+
+        case 'WORLD':
+            const worldData = sectionData.swiat;
+            if (worldData && worldData.nazwa) {
+                const worldEntry = {
+                    ID: worldData.nazwa, 
+                    SOURCE_VERSION: `${chapterId}#${currentTimestamp}`, 
+                    ROZDZIAL_NUMER: chapterNumber,
+                    OPIS: worldData.opis,
+                    SOURCE_CHAPTER_ID: chapterId,
+                    DATA_DODANIA: currentTimestamp
+                };
+                await dbClient.send(new PutCommand({ TableName: WORLDS_TABLE, Item: worldEntry }));
+                console.log(`Zapisano opis świata: ${worldData.nazwa}.`);
+            } else {
+                 throw new Error('Brak wymaganych danych w sekcji ŚWIAT.');
+            }
+            break;
+
+        case 'SCENES':
+            const plotEventsPromises = (sectionData.sceny || []).map(scene => {
+                const sceneId = `${chapterId}-${scene.numer}`;
+                const plotEvent = {
+                    ID_ZDARZENIA: sceneId, 
+                    SOURCE_CHAPTER_ID: chapterId,
+                    SOURCE_VERSION: currentTimestamp,
+                    ROZDZIAL_NUMER: chapterNumber,
+                    TYTUL_SCENY: scene.tytul,
+                    OPIS_SCENY: scene.opis,
+                    DATA_DODANIA: currentTimestamp
+                };
+                return dbClient.send(new PutCommand({ TableName: PLOT_EVENTS_TABLE, Item: plotEvent }));
+            });
+            await Promise.all(plotEventsPromises);
+            console.log(`Zapisano ${plotEventsPromises.length} scen/zdarzeń.`);
+            break;
+            
+        case 'SUMMARY':
+            // Finalne uaktualnienie rozdziału po pomyślnych zapisach sekcji (dla dashboardu)
+            if (!sectionData.summary || !sectionData.title) {
+                 throw new Error('Brak wymaganych danych w sekcji SUMMARY (summary/title).');
+            }
+            
+            const chapterItem = {
+                [CHAPTERS_ID]: chapterId, 
+                [VERSION_ID]: currentTimestamp, 
+                TITLE: sectionData.title,
+                CONTENT: rawChapter.CONTENT, 
+                STATUS: 'ANALYZED',
+                SUMMARY: sectionData.summary.substring(0, 500),
+                DANE_STATYSTYCZNE: sectionData.stats,
+                SCENES_COUNT: sectionData.sceny_count || 0,
+                WORLD_NAME: sectionData.world_name || 'N/A',
+                CHARACTERS_COUNT: sectionData.characters_count || 0,
+                CHARACTERS: sectionData.characters_list // Lista imion
+            };
+            await dbClient.send(new PutCommand({ TableName: CHAPTERS_TABLE, Item: chapterItem }));
+            console.log(`Zaktualizowano LLM_Chapters_V2 (SUMMARY).`);
+            break;
+            
+        default:
+            throw new Error(`Nieznany typ sekcji: ${sectionType}`);
+    }
+
+    return { status: 'SAVED', sectionType, message: `Sekcja ${sectionType} zapisana pomyślnie.` };
 };
 
 
 // =======================================================
-// HANDLER GŁÓWNY (JEST POPRAWNY)
+// HANDLER GŁÓWNY (Dwa kroki)
+// ... (logika bez zmian) ...
 // =======================================================
 
 export const handler = async (event) => {
     
-    if (event.httpMethod === 'OPTIONS') { return { statusCode: 200, headers }; }
+    // Usunięto Access-Control-Allow-* i pozostawiono tylko Content-Type
+    const headers = { 
+        "Content-Type": "application/json"
+    };
+    
+    if (event.httpMethod === 'OPTIONS') { return { statusCode: 200 }; }
 
     let requestBody;
     try {
@@ -213,37 +199,52 @@ export const handler = async (event) => {
     }
 
     try {
-        const { chapterId, title, content } = requestBody;
+        // --- KROK 2/3: Auto Save Logic (Combined Save) ---
+        if (requestBody.fullAutoSaveData) {
+            const { rawVersionTimestamp, numer_rozdzialu, ...fullJsonData } = requestBody.fullAutoSaveData;
+            const chapterId = `CH-${numer_rozdzialu}`;
+            const currentTimestamp = new Date().toISOString(); 
+            
+            // Logika auto-zapisu musi przekazać wszystkie dane do finalnego SUMMARY
+            const analysisResult = await performAllSectionSaves(db, chapterId, numer_rozdzialu, currentTimestamp, rawVersionTimestamp, fullJsonData);
+            
+            // Poprawiamy finalny zapis SUMMARY, aby upewnić się, że LLM_Chapters_V2 ma pełne statystyki
+            if (analysisResult.results.SUMMARY.success) {
+                 const summaryData = {
+                    summary: fullJsonData.streszczenie_szczegolowe, 
+                    title: fullJsonData.tytul_rozdzialu,
+                    stats: fullJsonData.dane_statystyczne,
+                    sceny_count: analysisResult.results.SCENES?.count || 0,
+                    world_name: analysisResult.results.WORLD?.name || 'N/A',
+                    characters_count: analysisResult.results.CHARACTERS?.count || 0,
+                    characters_list: fullJsonData.postacie.map(p => p.imie)
+                };
+                // Ponownie uruchamiamy zapis SUMMARY z pełnymi danymi
+                await processSectionUpdate(db, chapterId, numer_rozdzialu, currentTimestamp, rawVersionTimestamp, summaryData, 'SUMMARY');
+            }
+            
+            // Ponownie pobieramy wyniki, aby uwzględnić finalny zapis SUMMARY
+            const finalResults = await performAllSectionSaves(db, chapterId, numer_rozdzialu, currentTimestamp, rawVersionTimestamp, fullJsonData);
 
-        if (!chapterId || !title || !content) {
-            return { statusCode: 400, headers, body: JSON.stringify({ error: 'Wymagane pola: chapterId, title, content.' }) };
+            return { statusCode: 200, headers, body: JSON.stringify(finalResults) };
         }
         
-        const versionTimestamp = new Date().toISOString(); 
-        const chapterItem = {
-            [CHAPTERS_ID]: chapterId, 
-            [VERSION_ID]: versionTimestamp, 
-            TITLE: title,
-            CONTENT: content, 
-            STATUS: 'RAW' 
-        };
-        
-        // 1. Zapis nowego rekordu (nowa wersja) do DynamoDB
-        await db.send(new PutCommand({ TableName: CHAPTERS_TABLE, Item: chapterItem }));
+        // --- KROK 1: Raw Save Logic ---
+        const { chapterNumber, title, content } = requestBody;
+        const chapterId = `CH-${chapterNumber}`;
 
-        // 2. SYNCHRONICZNE WYWOŁANIE LOGIKI ANALIZY
-        const analysisResult = await runAnalysisLogic(db, chapterItem);
+        if (!chapterNumber || !title || !content) {
+            return { statusCode: 400, headers, body: JSON.stringify({ error: 'Wymagane pola KROKU 1: chapterNumber, title, content.' }) };
+        }
         
-        // 3. ZWRACAMY WYNIK
+        const rawSaveResult = await saveRawChapter(db, chapterId, title, content);
+        
         return { 
             statusCode: 200, 
             headers, 
             body: JSON.stringify({ 
-                message: `Rozdział ${chapterId} zapisany i pomyślnie przeanalizowany.`, 
-                CHAPTER_ID: chapterId,
-                VERSION_TIMESTAMP: versionTimestamp,
-                STATUS: analysisResult.STATUS || 'ANALYZED',
-                ANALYSIS_SUMMARY: analysisResult.analysisSummary 
+                ...rawSaveResult,
+                STATUS: 'RAW_SAVED_READY_FOR_ANALYSIS' 
             }) 
         };
 
