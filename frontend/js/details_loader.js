@@ -1,10 +1,12 @@
 import { fetchDashboardData, DASHBOARD_API_ENDPOINT } from './utils.js';
 
 // === FUNKCJE API DLA DETALI ===
-// ... (fetchChapterDetails, fetchCharacterDetails, fetchWorldDetails - bez zmian) ...
+
+// Pobieranie detali rozdziału (przez skanowanie dashboardu)
 async function fetchChapterDetails(chapterId) {
     const data = await fetchDashboardData();
     
+    // Zabezpieczenie: Sprawdzamy, czy struktura chapters.latestChapters istnieje
     const latestChapters = data?.chapters?.latestChapters;
 
     if (!Array.isArray(latestChapters) || latestChapters.length === 0) { 
@@ -30,6 +32,7 @@ async function fetchChapterDetails(chapterId) {
     return { chapter, worldDetails };
 }
 
+// Pobieranie detali postaci (przez dedykowany endpoint)
 async function fetchCharacterDetails(charId) {
     const response = await fetch(`${DASHBOARD_API_ENDPOINT}?charId=${charId}`, { method: 'GET' });
     const data = await response.json();
@@ -39,6 +42,7 @@ async function fetchCharacterDetails(charId) {
     return data;
 }
 
+// Pobieranie detali świata (przez dedykowany endpoint)
 async function fetchWorldDetails(worldId) {
     const response = await fetch(`${DASHBOARD_API_ENDPOINT}?worldId=${worldId}`, { method: 'GET' });
     const data = await response.json();
@@ -67,19 +71,19 @@ function renderError(containerId, message) {
     }
 }
 
-// Renderowanie detali rozdziału (Naprawa Postaci i Scen)
+// Renderowanie detali rozdziału
 async function renderChapterDetails(data) {
     const { chapter, worldDetails } = data;
     
     const chapterNumber = chapter.CHAPTER_ID.replace('CH-', '');
     const chapterId = chapter.CHAPTER_ID;
 
-    // --- Ustawienia nagłówka i metadanych (bez zmian) ---
+    // --- Ustawienia nagłówka i metadanych ---
     const pageTitle = document.getElementById('page-title');
     if (pageTitle) pageTitle.textContent = `${chapterNumber}: ${chapter.TITLE}`;
     
     const editLink = document.getElementById('edit-link');
-    if (editLink) editLink.href = `chapter_add.html?step=1&id=${chapterId}`;
+    if (editLink) editLink.href = `chapter_add.html?step=1&id=${chapter.CHAPTER_ID}`;
     
     const versionDate = document.getElementById('version-date');
     if (versionDate) versionDate.textContent = `Data dodania: ${new Date(chapter.VERSION_TIMESTAMP).toLocaleString('pl-PL')}`;
@@ -87,12 +91,12 @@ async function renderChapterDetails(data) {
     const summaryText = document.getElementById('summary-text');
     if (summaryText) summaryText.textContent = chapter.SUMMARY || 'Brak szczegółowego streszczenia.';
 
-
     // --- 1. SEKCIJA POSTACI ---
     const charListDetail = document.getElementById('character-list-detail');
-    const characters = chapter.CHARACTERS_LIST || [];
+    const characters = chapter.CHARACTERS_LIST || []; 
     
-    const charBoxTitle = document.querySelector('#analysis-sections-grid .analysis-box:nth-child(1) h4');
+    // Aktualizacja tytułu sekcji Postacie
+    const charBoxTitle = document.querySelector('#sidebar-analysis .sidebar-box:nth-child(1) h4');
     if (charBoxTitle) charBoxTitle.textContent = `Postacie (${characters.length})`;
     
     if (characters.length > 0) {
@@ -103,22 +107,24 @@ async function renderChapterDetails(data) {
              const charId = (charName || 'N/A').toUpperCase();
 
              if (charListDetail) charListDetail.innerHTML += `
-                <a href="character_details.html?id=${charId}" class="char-box">
-                    <strong>${charName}</strong>
+                <div class="char-box">
+                    <a href="character_details.html?id=${charId}" style="text-decoration: none;">
+                        <strong>${charName}</strong>
+                    </a>
                     Rola: ${char.rola_w_rozdziale || 'N/A'} <br>
                     Status: ${char.status || 'N/A'}
-                </a>
+                </div>
              `;
         });
     } else {
          if (charListDetail) charListDetail.innerHTML = '<p>Brak zidentyfikowanych postaci.</p>';
     }
 
-    // --- 2. SEKCIJA SCEN (Pobieranie i Renderowanie) ---
+    // --- 2. SEKCIJA SCEN ---
     const sceneListDetail = document.getElementById('scene-list-detail');
     const sceneCount = chapter.SCENES_COUNT || 0;
     
-    const sceneBoxTitle = document.querySelector('#analysis-sections-grid .analysis-box:nth-child(2) h4');
+    const sceneBoxTitle = document.querySelector('#sidebar-analysis .sidebar-box:nth-child(2) h4');
     if (sceneBoxTitle) sceneBoxTitle.textContent = `Sceny (${sceneCount})`;
     
     if (sceneCount > 0) {
@@ -132,10 +138,11 @@ async function renderChapterDetails(data) {
             scenes.forEach(scene => {
                 const formattedDate = new Date(scene.DATA_DODANIA).toLocaleDateString('pl-PL');
 
+                // Ujednolicony format scen
                 if (sceneListDetail) sceneListDetail.innerHTML += `
                     <div class="scene-item">
                         <a href="scene_details.html?id=${scene.ID_ZDARZENIA}"><strong>${scene.TYTUL_SCENY || 'Scena Bez Tytułu'}</strong></a>
-                        <p class="metadata-line">ID: ${scene.ID_ZDARZENIA} &bull; Data: ${formattedDate}</p>
+                        <p class="metadata-line">ID Zdarzenia: ${scene.ID_ZDARZENIA} &bull; Data: ${formattedDate}</p>
                         <p class="scene-description">${scene.OPIS_SCENY || 'Brak opisu.'}</p>
                         <hr class="scene-separator">
                     </div>
@@ -150,7 +157,7 @@ async function renderChapterDetails(data) {
     }
 
 
-    // --- 3. SEKCIJA ŚWIAT (Bez limitu znaków) ---
+    // --- 3. SEKCIJA ŚWIAT ---
     const worldInfoDetail = document.getElementById('world-info-detail');
     const currentWorld = worldDetails?.latestDetails || {ID: chapter.WORLD_NAME || 'N/A', NAZWA: chapter.WORLD_NAME || 'N/A', OPIS: 'Brak detali w bazie.'};
 
@@ -161,10 +168,7 @@ async function renderChapterDetails(data) {
     `;
 }
 
-// ... (renderCharacterDetails, renderWorldDetails i loadDetailsPage - reszta pliku bez zmian) ...
-// ... (Renderowanie detali postaci i świata bez zmian) ...
-// ... (Kod dla renderCharacterDetails i renderWorldDetails z poprzednich kroków) ...
-
+// Renderowanie detali postaci (Ewolucja)
 function renderCharacterDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     
@@ -223,6 +227,7 @@ function renderCharacterDetails(data) {
     if (content) content.innerHTML = html;
 }
 
+// Renderowanie detali świata (Ewolucja)
 function renderWorldDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     
@@ -278,7 +283,6 @@ function renderWorldDetails(data) {
     if (content) content.innerHTML = html;
 }
 
-
 // === FUNKCJA GŁÓWNA LOADERA ===
 export async function loadDetailsPage(id, type) {
     // Zabezpieczony odczyt nagłówka
@@ -290,9 +294,8 @@ export async function loadDetailsPage(id, type) {
     try {
         if (type === 'chapter') {
             const details = await fetchChapterDetails(id);
-            // Dodajemy logikę renderowania scen
-            const renderedDetails = await renderChapterDetails(details);
-            // RenderChapterDetails teraz obsługuje całą stronę
+            // Wywołujemy renderowanie scen (async)
+            await renderChapterDetails(details); 
             
         } else if (type === 'character') {
             const details = await fetchCharacterDetails(id);
