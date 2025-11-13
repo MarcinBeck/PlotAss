@@ -1,4 +1,4 @@
-import { fetchDashboardData, DASHBOARD_API_ENDPOINT } from './utils.js';
+import { fetchDashboardData, DASHBOARD_API_ENDPOINT, CHARACTERS_CHAPTER_API_ENDPOINT } from './utils.js';
 
 // === FUNKCJE API DLA DETALI ===
 
@@ -41,9 +41,10 @@ async function fetchCharacterDetails(charId) {
     return data;
 }
 
-// Pobieranie listy postaci dla danego rozdziału
+// NOWA FUNKCJA: Pobieranie listy postaci dla danego rozdziału
 async function fetchChapterCharacters(chapterId) {
-    const response = await fetch(`${DASHBOARD_API_ENDPOINT}?chapterCharactersId=${chapterId}`, { method: 'GET' });
+    // POPRAWKA: Użycie właściwego dedykowanego endpointu
+    const response = await fetch(`${CHARACTERS_CHAPTER_API_ENDPOINT}?chapterCharactersId=${chapterId}`, { method: 'GET' });
     const data = await response.json();
     if (!response.ok) {
         throw new Error(`BŁĄD API (Characters): ${data.error || 'Nieznany błąd.'}`);
@@ -97,16 +98,17 @@ async function renderChapterDetails(data) {
     const versionDate = document.getElementById('version-date');
     if (versionDate) versionDate.textContent = `Data dodania: ${new Date(chapter.VERSION_TIMESTAMP).toLocaleString('pl-PL')}`;
     
-    // Streszczenie: Wyświetlamy w pełni, bez ucinania
+    // POPRAWKA: Użycie innerHTML do interpretacji znaczników HTML w streszczeniu
     const summaryText = document.getElementById('summary-text');
-    if (summaryText) summaryText.textContent = chapter.SUMMARY || 'Brak szczegółowego streszczenia.';
+    if (summaryText) summaryText.innerHTML = chapter.SUMMARY || 'Brak szczegółowego streszczenia.';
 
     // --- 1. SEKCIJA POSTACI ---
     const charListDetail = document.getElementById('character-list-detail');
     
-    const charBoxTitle = document.querySelector('#analysis-sections-grid .analysis-box:nth-child(1) h4');
+    // Zmieniam selektor, aby dopasować go do ogólnej struktury (nie musisz tego zmieniać, ale to jest bezpieczniejsze)
+    const charBoxTitle = document.querySelector('#sidebar-analysis .sidebar-box:nth-child(1) h4');
     
-    if (charListDetail) charListDetail.innerHTML = `<p class="loading-text">Pobieranie postaci...</p>`;
+    if (charListDetail) charListDetail.innerHTML = `<p class="loading-text">Ładowanie postaci...</p>`;
     
     try {
         const characters = await fetchChapterCharacters(chapterId); 
@@ -120,7 +122,6 @@ async function renderChapterDetails(data) {
                  const charName = char.IMIE || 'N/A';
                  const charId = char.ID || (charName || 'N/A').toUpperCase();
 
-                 // KLUCZOWA POPRAWKA: Nowa struktura HTML dopasowana do CSS
                  if (charListDetail) charListDetail.innerHTML += `
                     <div class="char-detail-item">
                         <a href="character_details.html?id=${charId}" style="text-decoration: none; color: inherit;">
@@ -144,7 +145,7 @@ async function renderChapterDetails(data) {
     const sceneListDetail = document.getElementById('scene-list-detail');
     const sceneCount = chapter.SCENES_COUNT || 0;
     
-    const sceneBoxTitle = document.querySelector('#analysis-sections-grid .analysis-box:nth-child(2) h4');
+    const sceneBoxTitle = document.querySelector('#sidebar-analysis .sidebar-box:nth-child(2) h4');
     if (sceneBoxTitle) sceneBoxTitle.textContent = `Sceny (${sceneCount})`;
     
     if (sceneCount > 0) {
@@ -188,7 +189,6 @@ async function renderChapterDetails(data) {
 }
 
 // ... (renderCharacterDetails, renderWorldDetails i loadDetailsPage - reszta pliku bez zmian) ...
-
 function renderCharacterDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     
@@ -313,7 +313,6 @@ export async function loadDetailsPage(id, type) {
     try {
         if (type === 'chapter') {
             const details = await fetchChapterDetails(id);
-            // Czekamy na zakończenie renderowania (w tym asynchronicznego pobierania postaci)
             await renderChapterDetails(details); 
             
         } else if (type === 'character') {
