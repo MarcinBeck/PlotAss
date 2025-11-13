@@ -91,12 +91,11 @@ async function renderChapterDetails(data) {
     const summaryText = document.getElementById('summary-text');
     if (summaryText) summaryText.textContent = chapter.SUMMARY || 'Brak szczegółowego streszczenia.';
 
-    // --- 1. SEKCIJA POSTACI ---
+    // --- 1. SEKCIJA POSTACI (Naprawa wizualna) ---
     const charListDetail = document.getElementById('character-list-detail');
     const characters = chapter.CHARACTERS_LIST || []; 
     
-    // Aktualizacja tytułu sekcji Postacie
-    const charBoxTitle = document.querySelector('#sidebar-analysis .sidebar-box:nth-child(1) h4');
+    const charBoxTitle = document.querySelector('#analysis-sections-grid .analysis-box:nth-child(1) h4');
     if (charBoxTitle) charBoxTitle.textContent = `Postacie (${characters.length})`;
     
     if (characters.length > 0) {
@@ -106,13 +105,14 @@ async function renderChapterDetails(data) {
              const charName = char.imie || 'N/A';
              const charId = (charName || 'N/A').toUpperCase();
 
+             // Używamy bezpiecznej struktury z dodatkowym <div> jako kontenerm, aby CSS nie 'połknął' tekstu.
              if (charListDetail) charListDetail.innerHTML += `
-                <div class="char-box">
-                    <a href="character_details.html?id=${charId}" style="text-decoration: none;">
+                <div class="char-detail-item">
+                    <a href="character_details.html?id=${charId}" class="char-box">
                         <strong>${charName}</strong>
+                        Rola: ${char.rola_w_rozdziale || 'N/A'} <br>
+                        Status: ${char.status || 'N/A'}
                     </a>
-                    Rola: ${char.rola_w_rozdziale || 'N/A'} <br>
-                    Status: ${char.status || 'N/A'}
                 </div>
              `;
         });
@@ -120,11 +120,11 @@ async function renderChapterDetails(data) {
          if (charListDetail) charListDetail.innerHTML = '<p>Brak zidentyfikowanych postaci.</p>';
     }
 
-    // --- 2. SEKCIJA SCEN ---
+    // --- 2. SEKCIJA SCEN (Renderowanie scen) ---
     const sceneListDetail = document.getElementById('scene-list-detail');
     const sceneCount = chapter.SCENES_COUNT || 0;
     
-    const sceneBoxTitle = document.querySelector('#sidebar-analysis .sidebar-box:nth-child(2) h4');
+    const sceneBoxTitle = document.querySelector('#analysis-sections-grid .analysis-box:nth-child(2) h4');
     if (sceneBoxTitle) sceneBoxTitle.textContent = `Sceny (${sceneCount})`;
     
     if (sceneCount > 0) {
@@ -133,7 +133,7 @@ async function renderChapterDetails(data) {
         try {
             const scenes = await fetchChapterScenes(chapterId);
 
-            if (sceneListDetail) sceneListDetail.innerHTML = ''; // Czyścimy loading
+            if (sceneListDetail) sceneListDetail.innerHTML = '';
             
             scenes.forEach(scene => {
                 const formattedDate = new Date(scene.DATA_DODANIA).toLocaleDateString('pl-PL');
@@ -227,7 +227,6 @@ function renderCharacterDetails(data) {
     if (content) content.innerHTML = html;
 }
 
-// Renderowanie detali świata (Ewolucja)
 function renderWorldDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     
@@ -294,7 +293,7 @@ export async function loadDetailsPage(id, type) {
     try {
         if (type === 'chapter') {
             const details = await fetchChapterDetails(id);
-            // Wywołujemy renderowanie scen (async)
+            // Czekamy na zakończenie renderowania scen
             await renderChapterDetails(details); 
             
         } else if (type === 'character') {
