@@ -1,17 +1,21 @@
 version: 0.2
+
 phases:
   install:
     runtime-versions:
-      nodejs: 22 
+      nodejs: 20
     commands:
-      - echo "Instalacja: Node.js"
+      - echo "Instalacja środowiska Node.js zakończona."
+
   build:
     commands:
       - echo "Rozpoczynanie pakowania funkcji Lambda..."
+      # Upewnij się, że poniższe pliki istnieją w folderze backend/
       - zip -j ChapterManager.zip backend/ChapterManager.mjs
       - zip -j DashboardDataResolver.zip backend/DashboardDataResolver.mjs
       - zip -j LLM_QueryResolver.zip backend/LLM_QueryResolver.mjs
       - echo "Pakowanie zakończone. Utworzono artefakty ZIP."
+
 artifacts:
   files:
     - ChapterManager.zip
