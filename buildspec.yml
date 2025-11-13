@@ -1,0 +1,26 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - echo "Instalacja: Node.js"
+      # Wymagane do uruchomienia poleceń SAM
+      - pip install aws-sam-cli 
+  
+  build:
+    commands:
+      - echo "Budowanie aplikacji SAM. Automatyczne pakowanie funkcji..."
+      # Tworzy pakiety ZIP dla każdej z trzech funkcji na podstawie template.yaml
+      - sam build
+  
+  post_build:
+    commands:
+      - echo "Wdrażanie do AWS CloudFormation/Lambda..."
+      # Wdraża cały stos (3 funkcje). Użyj UNIKALNEJ nazwy stosu.
+      - sam deploy --no-confirm-changeset --no-fail-on-empty-changeset --stack-name PlotAss-Backend-Stack --capabilities CAPABILITY_IAM
+
+artifacts:
+  # Ważne: artefakty muszą zawierać template.yaml, aby CloudFormation wiedział co wdrożyć
+  files:
+    - template.yaml
