@@ -3,7 +3,7 @@ export const DASHBOARD_API_ENDPOINT = 'https://kggk7qj2bk.execute-api.eu-north-1
 export const CHAPTER_MANAGER_ENDPOINT = 'https://hdhzbujrg3tgyc64wdnseswqxi0lhgci.lambda-url.eu-north-1.on.aws/'; 
 
 // === FUNKCJE POMOCNICZE ===
- 
+
 export function updateStatusMessage(message, type = 'info') {
     const alertDiv = document.getElementById('status-alert');
     if (!alertDiv) return;
@@ -45,7 +45,7 @@ export async function fetchDashboardData() {
     return response.json();
 }
 
-export async function saveRawChapter(payload) {
+async function saveRawChapterApi(payload) {
     const response = await fetch(CHAPTER_MANAGER_ENDPOINT, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' },
@@ -61,7 +61,7 @@ export async function saveRawChapter(payload) {
     return data;
 }
 
-export async function autoSaveAllSections(payload) {
+async function autoSaveAllSectionsApi(payload) {
     const response = await fetch(CHAPTER_MANAGER_ENDPOINT, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' },
@@ -195,7 +195,7 @@ window.saveChapterRaw = async function() {
     updateStatusMessage('Wysyłanie treści RAW do Lambda...', 'info');
     
     try {
-        const data = await saveRawChapter({ chapterNumber, title, content });
+        const data = await saveRawChapterApi({ chapterNumber, title, content });
         
         if (data.STATUS === 'RAW_SAVED_READY_FOR_ANALYSIS') {
             const rawChapterDetails = {
@@ -264,7 +264,7 @@ window.processJsonAndAutoSave = function() {
 
 async function autoSaveAllSectionsAsync(payload) {
     try {
-        await autoSaveAllSections(payload);
+        await autoSaveAllSectionsApi(payload);
         window.location.href = 'chapter_add.html?step=3&saveStatus=SUCCESS';
     } catch (error) {
         console.error('Błąd auto-zapisu:', error);
