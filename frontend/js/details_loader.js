@@ -1,4 +1,4 @@
-import { fetchDashboardData, DASHBOARD_API_ENDPOINT, CHARACTERS_CHAPTER_API_ENDPOINT } from './utils.js';
+import { fetchDashboardData, DASHBOARD_API_ENDPOINT } from './utils.js';
 
 // === FUNKCJE API DLA DETALI ===
 
@@ -6,7 +6,6 @@ import { fetchDashboardData, DASHBOARD_API_ENDPOINT, CHARACTERS_CHAPTER_API_ENDP
 async function fetchChapterDetails(chapterId) {
     const data = await fetchDashboardData();
     
-    // Zabezpieczenie: Sprawdzamy, czy struktura chapters.latestChapters istnieje
     const latestChapters = data?.chapters?.latestChapters;
 
     if (!Array.isArray(latestChapters) || latestChapters.length === 0) { 
@@ -42,10 +41,9 @@ async function fetchCharacterDetails(charId) {
     return data;
 }
 
-// NOWA FUNKCJA: Pobieranie listy postaci dla danego rozdziału
+// Pobieranie listy postaci dla danego rozdziału
 async function fetchChapterCharacters(chapterId) {
-    // KLUCZOWA ZMIANA: Używamy nowego dedykowanego endpointu
-    const response = await fetch(`${CHARACTERS_CHAPTER_API_ENDPOINT}?chapterCharactersId=${chapterId}`, { method: 'GET' });
+    const response = await fetch(`${DASHBOARD_API_ENDPOINT}?chapterCharactersId=${chapterId}`, { method: 'GET' });
     const data = await response.json();
     if (!response.ok) {
         throw new Error(`BŁĄD API (Characters): ${data.error || 'Nieznany błąd.'}`);
@@ -99,18 +97,19 @@ async function renderChapterDetails(data) {
     const versionDate = document.getElementById('version-date');
     if (versionDate) versionDate.textContent = `Data dodania: ${new Date(chapter.VERSION_TIMESTAMP).toLocaleString('pl-PL')}`;
     
+    // Streszczenie: Wyświetlamy w pełni, bez ucinania
     const summaryText = document.getElementById('summary-text');
     if (summaryText) summaryText.textContent = chapter.SUMMARY || 'Brak szczegółowego streszczenia.';
 
     // --- 1. SEKCIJA POSTACI ---
     const charListDetail = document.getElementById('character-list-detail');
     
-    const charBoxTitle = document.querySelector('#sidebar-analysis .sidebar-box:nth-child(1) h4');
+    const charBoxTitle = document.querySelector('#analysis-sections-grid .analysis-box:nth-child(1) h4');
     
-    if (charListDetail) charListDetail.innerHTML = `<p class="loading-text">Ładowanie postaci...</p>`;
+    if (charListDetail) charListDetail.innerHTML = `<p class="loading-text">Pobieranie postaci...</p>`;
     
     try {
-        const characters = await fetchChapterCharacters(chapterId); // Używamy nowej funkcji
+        const characters = await fetchChapterCharacters(chapterId); 
         
         if (charBoxTitle) charBoxTitle.textContent = `Postacie (${characters.length})`; 
 
@@ -121,13 +120,14 @@ async function renderChapterDetails(data) {
                  const charName = char.IMIE || 'N/A';
                  const charId = char.ID || (charName || 'N/A').toUpperCase();
 
+                 // KLUCZOWA POPRAWKA: Nowa struktura HTML dopasowana do CSS
                  if (charListDetail) charListDetail.innerHTML += `
-                    <div class="char-box">
-                        <a href="character_details.html?id=${charId}" style="text-decoration: none;">
+                    <div class="char-detail-item">
+                        <a href="character_details.html?id=${charId}" style="text-decoration: none; color: inherit;">
                             <strong>${charName}</strong>
                         </a>
-                        Rola: ${char.ROLA_W_ROZDZIALE || 'N/A'} <br>
-                        Status: ${char.STATUS || 'N/A'}
+                        <p>Rola: ${char.ROLA_W_ROZDZIALE || 'N/A'}</p>
+                        <p>Status: ${char.STATUS || 'N/A'}</p>
                     </div>
                  `;
             });
@@ -144,7 +144,7 @@ async function renderChapterDetails(data) {
     const sceneListDetail = document.getElementById('scene-list-detail');
     const sceneCount = chapter.SCENES_COUNT || 0;
     
-    const sceneBoxTitle = document.querySelector('#sidebar-analysis .sidebar-box:nth-child(2) h4');
+    const sceneBoxTitle = document.querySelector('#analysis-sections-grid .analysis-box:nth-child(2) h4');
     if (sceneBoxTitle) sceneBoxTitle.textContent = `Sceny (${sceneCount})`;
     
     if (sceneCount > 0) {
@@ -187,7 +187,8 @@ async function renderChapterDetails(data) {
     `;
 }
 
-// Renderowanie detali postaci (Ewolucja) - bez zmian
+// ... (renderCharacterDetails, renderWorldDetails i loadDetailsPage - reszta pliku bez zmian) ...
+
 function renderCharacterDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     
@@ -246,7 +247,6 @@ function renderCharacterDetails(data) {
     if (content) content.innerHTML = html;
 }
 
-// Renderowanie detali świata (Ewolucja) - bez zmian
 function renderWorldDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     
