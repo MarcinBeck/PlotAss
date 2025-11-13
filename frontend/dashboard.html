@@ -11,7 +11,7 @@
     <header>
         <h1>LLM Fabularny Asystent</h1>
         <nav>
-            <a href="#">1.0.18</a>
+            <a href="#">1.0.19</a>
             <a href="#">Postacie</a>
             <a href="#">Fabuła</a>
             <a href="#">Światy</a>
@@ -101,7 +101,7 @@
     <div id="chapterModal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeModal('chapterModal')">&times;</span>
-            <h2>Dodaj/Aktualizuj Rozdział</h2>
+            <h2>Dodaj/Aktualizuj Rozdział (3-Etapy)</h2>
 
             <div id="step-1-input">
                 <label for="modal-chapter-number">Numer Rozdziału (np. 1, 2, 3):</label>
@@ -113,7 +113,7 @@
                 <label for="modal-chapter-content">Treść Rozdziału (Surowy Tekst):</label>
                 <textarea id="modal-chapter-content" rows="12" placeholder="Wklej tu cały tekst rozdziału."></textarea>
                 
-                <button id="start-raw-save-btn" class="add-btn" onclick="saveChapterRaw()">1. ZAPISZ RAW I PRZEJDŹ DO ANALIZY</button>
+                <button id="start-raw-save-btn" class="add-btn" onclick="saveChapterRaw()">1. ZAPISZ RAW</button>
             </div>
             
             <div id="step-2-json" style="display: none;">
@@ -123,7 +123,50 @@
                 <label for="modal-json-content">Struktura JSON:</label>
                 <textarea id="modal-json-content" rows="18" placeholder="Wklej tutaj pełną strukturę JSON z danymi statystycznymi, scenami i postaciami."></textarea>
                 
-                <button id="start-json-analysis-btn" class="add-btn" style="background-color: #28a745;" onclick="startJsonAnalysis()">2. ZATWIERDŹ JSON I ZAPISZ ANALIZĘ</button>
+                <button id="process-json-btn" class="add-btn" style="background-color: #2e64a1;" onclick="processJsonAndShowReview()">2. PRZETWÓRZ JSON I PRZEJDŹ DO PRZEGLĄDU</button>
+            </div>
+            
+            <div id="step-3-review" class="analysis-results" style="display: none;">
+                <h3 style="margin-bottom: 5px;">Krok 3: Przegląd i Zapis Sekcji</h3>
+                <p>Rozdział: <strong id="review-chapter-display"></strong> (<code id="review-version-timestamp"></code>)</p>
+
+                <div class="analysis-section">
+                    <div class="result-header">
+                        <span>STRESZCZENIE i STATYSTYKI (LLM_Chapters_V2):</span>
+                        <button class="cta-btn" id="save-summary-btn" onclick="saveSection('SUMMARY')">Zapisz</button>
+                    </div>
+                    <p id="review-summary-text" style="margin: 0; font-style: italic;"></p>
+                    <p style="margin-top: 10px; font-size: 0.85em; color: #555;">Suma wyrazów: <strong id="review-words-count">N/A</strong></p>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="result-header">
+                        <span>BOHATEROWIE (LLM_Characters):</span>
+                        <span id="review-char-count" class="status-tag status-edit">0 Postaci</span>
+                        <button class="cta-btn" id="save-characters-btn" onclick="saveSection('CHARACTERS')">Zapisz</button>
+                    </div>
+                    <ul id="review-character-list" class="item-list" style="min-height: auto; border: none;"></ul>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="result-header">
+                        <span>ŚWIAT (LLM_Worlds):</span>
+                        <span id="review-world-name" class="status-tag status-none">N/A</span>
+                        <button class="cta-btn" id="save-world-btn" onclick="saveSection('WORLD')">Zapisz</button>
+                    </div>
+                    <p id="review-world-description" style="margin: 0; font-style: italic;"></p>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="result-header">
+                        <span>SCENY (LLM_PlotEvents):</span>
+                        <span id="review-scene-count" class="status-tag status-new">0 Scen</span>
+                        <button class="cta-btn" id="save-scenes-btn" onclick="saveSection('SCENES')">Zapisz</button>
+                    </div>
+                    <ul id="review-scene-list" class="item-list" style="min-height: auto; border: none;"></ul>
+                </div>
+
+                <button id="final-confirm-btn" class="add-btn" style="background-color: #2e64a1; margin-top: 20px;" onclick="closeModal('chapterModal')">ZAKOŃCZ (ZAMKNIJ MODAL)</button>
             </div>
             
         </div>
