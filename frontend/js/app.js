@@ -1,10 +1,4 @@
-// Plik: frontend/js/app.js (LOGIKA AUTO-SAVE)
-
-// ====================================================================
-// PAMIĘTAJ: Wklej swoje adresy URL z API Gateway!
-// ====================================================================
-
-// DashboardDataResolver (GET - Ładowanie statystyk)
+// DashboardDataResolver (GET - Ładowanie statystyk i detale postaci)
 const DASHBOARD_API_ENDPOINT = 'https://kggk7qj2bk.execute-api.eu-north-1.amazonaws.com/FINAL_SUCCESS/DashboardDataResolver'; 
 // ChapterManager (POST - Dodawanie rozdziału, wywoływanie analizy)
 const CHAPTER_MANAGER_ENDPOINT = 'https://hdhzbujrg3tgyc64wdnseswqxi0lhgci.lambda-url.eu-north-1.on.aws/'; 
@@ -40,51 +34,61 @@ function openModal(modalId, step = 1) {
     const modal = document.getElementById(modalId);
     if (!modal) return; 
 
+    // Zamknij poprzednie modale, jeśli nie jest to modal szczegółów postaci
+    if (modalId !== 'characterDetailsModal') {
+        document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+    }
+    
     modal.style.display = 'block';
     
-    // Resetowanie widoków
-    document.getElementById('step-1-input').style.display = 'none';
-    document.getElementById('step-2-json').style.display = 'none';
-    document.getElementById('step-3-review').style.display = 'none';
-    document.getElementById('modal-status-alert').style.display = 'none';
-    document.getElementById('modal-title').textContent = 'Dodaj/Aktualizuj Rozdział';
+    // Resetowanie widoków głównego modalu
+    if (modalId === 'chapterModal') {
+        document.getElementById('step-1-input').style.display = 'none';
+        document.getElementById('step-2-json').style.display = 'none';
+        document.getElementById('step-3-review').style.display = 'none';
+        document.getElementById('modal-status-alert').style.display = 'none';
+        document.getElementById('modal-title').textContent = 'Dodaj/Aktualizuj Rozdział';
+        
+        // Resetowanie statusów w KROKU 3
+        ['summary', 'characters', 'world', 'scenes'].forEach(type => {
+            const statusElement = document.getElementById(`save-${type}-status`);
+            if (statusElement) {
+                statusElement.textContent = 'Niezapisane';
+                statusElement.className = 'status-tag status-none';
+            }
+        });
 
-    // Resetowanie statusów w KROKU 3
-    ['summary', 'characters', 'world', 'scenes'].forEach(type => {
-        const statusElement = document.getElementById(`save-${type}-status`);
-        if (statusElement) {
-            statusElement.textContent = 'Niezapisane';
-            statusElement.className = 'status-tag status-none';
+        if (step === 1) {
+            document.getElementById('step-1-input').style.display = 'block';
+            document.getElementById('modal-title').textContent = 'Nowy rozdział: 1/3 Wstaw treść';
+            // Reset stanu
+            rawChapterDetails = {}; 
+            parsedJsonData = {}; 
+            document.getElementById('modal-chapter-number').value = '1';
+            document.getElementById('modal-chapter-title').value = '';
+            document.getElementById('modal-chapter-content').value = '';
+        } else if (step === 2) {
+            document.getElementById('step-2-json').style.display = 'block';
+            document.getElementById('modal-title').textContent = 'Nowy rozdział: 2/3 Dane Fabularne (JSON)';
+            document.getElementById('json-chapter-display').textContent = rawChapterDetails.title || 'N/A';
+            document.getElementById('json-version-timestamp').textContent = rawChapterDetails.versionTimestamp || '';
+            document.getElementById('modal-json-content').value = '';
+        } else if (step === 3) {
+            document.getElementById('step-3-review').style.display = 'block';
+            document.getElementById('modal-title').textContent = 'Nowy rozdział: 3/3 Potwierdzenie';
+            renderReviewSections(); 
         }
-    });
-
-    if (step === 1) {
-        document.getElementById('step-1-input').style.display = 'block';
-        document.getElementById('modal-title').textContent = 'Nowy rozdział: 1/3 Wstaw treść';
-        // Reset stanu
-        rawChapterDetails = {}; 
-        parsedJsonData = {}; 
-        document.getElementById('modal-chapter-number').value = '1';
-        document.getElementById('modal-chapter-title').value = '';
-        document.getElementById('modal-chapter-content').value = '';
-    } else if (step === 2) {
-        document.getElementById('step-2-json').style.display = 'block';
-        document.getElementById('modal-title').textContent = 'Nowy rozdział: 2/3 Dane Fabularne (JSON)';
-        // Wyświetlanie danych z KROKU 1
-        document.getElementById('json-chapter-display').textContent = rawChapterDetails.title || 'N/A';
-        document.getElementById('json-version-timestamp').textContent = rawChapterDetails.versionTimestamp || '';
-        document.getElementById('modal-json-content').value = '';
-    } else if (step === 3) {
-        document.getElementById('step-3-review').style.display = 'block';
-        document.getElementById('modal-title').textContent = 'Nowy rozdział: 3/3 Potwierdzenie';
-        renderReviewSections(); 
     }
 }
 
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.style.display = 'none';
-    fetchData(); 
+    
+    // Specjalna obsługa, aby nie odświeżać dashboardu przy zamykaniu detali postaci
+    if (modalId !== 'characterDetailsModal') {
+        fetchData(); 
+    }
 }
 
 function viewAddChapter() {
@@ -189,7 +193,6 @@ function processJsonAndAutoSave() {
 async function autoSaveAllSections(payload) {
     const processBtn = document.getElementById('process-json-btn');
     
-    // Ustawienie wskaźników statusu do resetu
     const statusMap = {
         'CHARACTERS': 'save-characters-status',
         'WORLD': 'save-world-status',
@@ -230,10 +233,8 @@ async function autoSaveAllSections(payload) {
         openModal('chapterModal', 3); 
 
     } catch (error) {
-        // Zalogowanie błędów do konsoli
         console.error('Błąd auto-zapisu:', error);
 
-        // Tworzenie makiety wyników z błędem globalnym dla wyświetlenia na ekranie przeglądu
         const globalErrorResults = {};
         for (const key of Object.keys(statusMap)) {
             globalErrorResults[key] = { success: false, error: 'Krytyczny błąd połączenia/API.' };
@@ -241,8 +242,7 @@ async function autoSaveAllSections(payload) {
         updateReviewStatusIndicators(globalErrorResults);
         
         updateStatusMessage(`KRYTYCZNY BŁĄD ZAPISU: ${error.message}. Sprawdź konsolę.`, 'error');
-        openModal('chapterModal', 3); // Przejście do KROKU 3, aby pokazać błędy
-
+        openModal('chapterModal', 3); 
         
     } finally {
         processBtn.disabled = false;
@@ -328,6 +328,97 @@ function renderReviewSections() {
 }
 
 
+// --- FUNKCJE SZCZEGÓŁÓW POSTACI ---
+
+async function viewCharacterDetails(charId) {
+    // 1. Otwarcie modalu i inicjalizacja elementów
+    openModal('characterDetailsModal');
+    
+    const nameElement = document.getElementById('char-detail-name');
+    const statusElement = document.getElementById('char-latest-status');
+    const roleElement = document.getElementById('char-latest-role');
+    const typeElement = document.getElementById('char-latest-type');
+    const historyContainer = document.getElementById('char-chapters-history');
+    
+    nameElement.textContent = 'Ładowanie...';
+    historyContainer.innerHTML = '<p class="loading-text">Pobieranie historii postaci...</p>';
+
+    try {
+        // 2. Pobranie danych historycznych
+        const response = await fetch(`${DASHBOARD_API_ENDPOINT}?charId=${charId}`, { method: 'GET' });
+        if (!response.ok) {
+            throw new Error(`Błąd HTTP: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        const latest = data.latestDetails;
+        
+        // 3. Uzupełnienie najnowszych detali
+        nameElement.textContent = latest.IMIE || 'Nieznana Postać';
+        statusElement.textContent = latest.SZCZEGOLY?.status || 'Brak statusu';
+        roleElement.textContent = latest.ROLA_W_ROZDZIALE || 'Brak roli';
+        typeElement.textContent = latest.SZCZEGOLY?.typ || 'N/A';
+        
+        // 4. Renderowanie historii ewolucji
+        renderCharacterHistory(data.chaptersHistory);
+
+    } catch (error) {
+        nameElement.textContent = 'BŁĄD ŁADOWANIA';
+        historyContainer.innerHTML = `<p style="color:red;">Nie udało się załadować danych. ${error.message}</p>`;
+        console.error('Błąd ładowania detali postaci:', error);
+    }
+}
+
+function renderCharacterHistory(chaptersHistory) {
+    const historyContainer = document.getElementById('char-chapters-history');
+    historyContainer.innerHTML = ''; // Czyścimy
+
+    if (chaptersHistory.length === 0) {
+        historyContainer.innerHTML = '<p>Brak historii w rozdziałach.</p>';
+        return;
+    }
+    
+    chaptersHistory.forEach(chapter => {
+        // Tytuł Rozdziału (Sekcja rozwijana - <details>)
+        const chapterDiv = document.createElement('div');
+        chapterDiv.className = 'chapter-history-group';
+        chapterDiv.innerHTML = `
+            <details class="analysis-section" open>
+                <summary style="font-weight: bold; cursor: pointer; padding: 5px 0;">
+                    ROZDZIAŁ ${chapter.chapterId.replace('CH-', '')} (${chapter.versions.length} Wersji)
+                </summary>
+                <ul class="version-list" style="list-style: none; padding-left: 0;"></ul>
+            </details>
+        `;
+        
+        const versionList = chapterDiv.querySelector('.version-list');
+        
+        // Wersje w ramach Rozdziału (Data i Detale)
+        chapter.versions.sort((a, b) => new Date(b.versionTimestamp) - new Date(a.versionTimestamp)).forEach(version => {
+            const versionLi = document.createElement('li');
+            const formattedDate = new Date(version.versionTimestamp).toLocaleString('pl-PL');
+            
+            // Tworzymy rozwijaną sekcję dla każdej wersji
+            versionLi.innerHTML = `
+                <details style="margin-top: 10px; border-left: 3px solid #007bff; padding-left: 10px;">
+                    <summary style="cursor: pointer;">
+                        Wersja z: <strong>${formattedDate}</strong>
+                    </summary>
+                    <p style="margin-top: 5px; font-size: 0.9em;">
+                        **Rola w Rozdziale:** ${version.rola_w_rozdziale} <br>
+                        **Status:** ${version.szczegoly?.status || 'N/A'} <br>
+                        **Typ:** ${version.szczegoly?.typ || 'N/A'}
+                    </p>
+                </details>
+            `;
+            versionList.appendChild(versionLi);
+        });
+        
+        historyContainer.appendChild(chapterDiv);
+    });
+}
+
+
 // --- POZOSTAŁE FUNKCJE (Dashboard Fetch) ---
 
 async function fetchData() {
@@ -399,12 +490,12 @@ function updateCharacterSection(charactersData) {
     displayList.forEach(char => {
         const li = document.createElement('li');
         const charName = char.IMIE || 'N/A';
-        const charWorld = char.A_DANE_OGOLNE?.WEZEL_ID || 'Nieznany'; 
+        const charId = char.ID; 
         
         li.innerHTML = `
             <span><strong>${charName.substring(0, 15)}</strong></span>
-            <span>Węzeł: ${charWorld.substring(0, 10)}</span>
-            <button class="cta-btn" onclick="viewCharacterDetails('${char.ID}')">Podgląd</button>
+            <span>Status: ${char.SZCZEGOLY?.status || 'N/A'}</span>
+            <button class="cta-btn" onclick="viewCharacterDetails('${charId}')">Podgląd</button>
         `;
         list.appendChild(li);
     });
