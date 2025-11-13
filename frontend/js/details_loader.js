@@ -42,7 +42,7 @@ async function fetchCharacterDetails(charId) {
     return data;
 }
 
-// NOWA FUNKCJA: Pobieranie listy postaci dla danego rozdziału
+// Pobieranie listy postaci dla danego rozdziału
 async function fetchChapterCharacters(chapterId) {
     const response = await fetch(`${DASHBOARD_API_ENDPOINT}?chapterCharactersId=${chapterId}`, { method: 'GET' });
     const data = await response.json();
@@ -101,17 +101,19 @@ async function renderChapterDetails(data) {
     const summaryText = document.getElementById('summary-text');
     if (summaryText) summaryText.textContent = chapter.SUMMARY || 'Brak szczegółowego streszczenia.';
 
-    // --- 1. SEKCIJA POSTACI (NOWA LOGIKA: Pobieranie z getCharactersForChapter) ---
+    // --- 1. SEKCIJA POSTACI (Wymuszenie wyświetlania licznika) ---
     const charListDetail = document.getElementById('character-list-detail');
     
     const charBoxTitle = document.querySelector('#sidebar-analysis .sidebar-box:nth-child(1) h4');
     
-    if (charListDetail) charListDetail.innerHTML = `<p class="loading-text">Ładowanie postaci...</p>`;
+    if (charListDetail) charListDetail.innerHTML = `<p class="loading-text">Pobieranie postaci...</p>`;
     
     try {
         const characters = await fetchChapterCharacters(chapterId); // Używamy nowej funkcji
         
-        if (charBoxTitle) charBoxTitle.textContent = `Postacie (${characters.length})`;
+        // --- KLUCZOWA ZMIANA: Wyświetlenie poprawnej liczby ---
+        if (charBoxTitle) charBoxTitle.textContent = `Postacie (${characters.length})`; 
+
         if (charListDetail) charListDetail.innerHTML = '';
 
         if (characters.length > 0) {
@@ -120,12 +122,12 @@ async function renderChapterDetails(data) {
                  const charId = char.ID || (charName || 'N/A').toUpperCase();
 
                  if (charListDetail) charListDetail.innerHTML += `
-                    <div class="char-detail-item">
-                        <a href="character_details.html?id=${charId}" class="char-box">
+                    <div class="char-box">
+                        <a href="character_details.html?id=${charId}" style="text-decoration: none;">
                             <strong>${charName}</strong>
-                            Rola: ${char.ROLA_W_ROZDZIALE || 'N/A'} <br>
-                            Status: ${char.STATUS || 'N/A'}
                         </a>
+                        Rola: ${char.ROLA_W_ROZDZIALE || 'N/A'} <br>
+                        Status: ${char.STATUS || 'N/A'}
                     </div>
                  `;
             });
@@ -138,7 +140,7 @@ async function renderChapterDetails(data) {
     }
 
 
-    // --- 2. SEKCIJA SCEN ---
+    // --- 2. SEKCIJA SCEN (Renderowanie scen) ---
     const sceneListDetail = document.getElementById('scene-list-detail');
     const sceneCount = chapter.SCENES_COUNT || 0;
     
@@ -185,7 +187,7 @@ async function renderChapterDetails(data) {
     `;
 }
 
-// Renderowanie detali postaci (Ewolucja) - bez zmian
+// ... (renderCharacterDetails, renderWorldDetails i loadDetailsPage - reszta pliku bez zmian) ...
 function renderCharacterDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     
@@ -244,7 +246,6 @@ function renderCharacterDetails(data) {
     if (content) content.innerHTML = html;
 }
 
-// Renderowanie detali świata (Ewolucja) - bez zmian
 function renderWorldDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     
@@ -311,7 +312,6 @@ export async function loadDetailsPage(id, type) {
     try {
         if (type === 'chapter') {
             const details = await fetchChapterDetails(id);
-            // Czekamy na zakończenie renderowania (w tym asynchronicznego pobierania postaci)
             await renderChapterDetails(details); 
             
         } else if (type === 'character') {
