@@ -2,14 +2,14 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      # Używamy stabilnej wersji Node.js, która obsługuje .mjs
+      # Używamy Node.js 20.x, który jest kompatybilny z naszym kodem .mjs
       nodejs: 20 
     commands:
-      - echo "Instalacja: Node.js (bez npm install)"
+      - echo "Instalacja: Node.js"
   build:
     commands:
       - echo "Rozpoczynanie pakowania funkcji Lambda..."
-      # WAŻNE: Używamy '-j' (junk paths), aby pliki trafiły do głównego katalogu ZIP.
+      # WAŻNE: Komendy ZIP. Upewnij się, że ścieżka do backend/ jest poprawna.
       - zip -j ChapterManager.zip backend/ChapterManager.mjs
       - zip -j DashboardDataResolver.zip backend/DashboardDataResolver.mjs
       - zip -j LLM_QueryResolver.zip backend/LLM_QueryResolver.mjs
