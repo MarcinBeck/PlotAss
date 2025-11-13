@@ -1,4 +1,4 @@
-// Plik: frontend/js/app.js (LOGIKA GRANULARNEGO ZAPISU)
+// Plik: frontend/js/app.js (LOGIKA AUTO-SAVE)
 
 // ====================================================================
 // PAMIĘTAJ: Wklej swoje adresy URL z API Gateway!
@@ -17,6 +17,25 @@ let parsedJsonData = {};
 
 // --- FUNKCJE NAWIGACYJNE MODALA ---
 
+function updateStatusMessage(message, type = 'info') {
+    const alertDiv = document.getElementById('modal-status-alert');
+    let bgColor = '#e7f7ff'; // info
+    let color = '#333';
+
+    if (type === 'success') {
+        bgColor = '#d4edda'; // success
+        color = '#155724';
+    } else if (type === 'error') {
+        bgColor = '#f8d7da'; // danger
+        color = '#721c24';
+    }
+
+    alertDiv.style.backgroundColor = bgColor;
+    alertDiv.style.color = color;
+    alertDiv.innerHTML = message;
+    alertDiv.style.display = 'block';
+}
+
 function openModal(modalId, step = 1) {
     const modal = document.getElementById(modalId);
     if (!modal) return; 
@@ -27,9 +46,21 @@ function openModal(modalId, step = 1) {
     document.getElementById('step-1-input').style.display = 'none';
     document.getElementById('step-2-json').style.display = 'none';
     document.getElementById('step-3-review').style.display = 'none';
+    document.getElementById('modal-status-alert').style.display = 'none';
+    document.getElementById('modal-title').textContent = 'Dodaj/Aktualizuj Rozdział';
+
+    // Resetowanie statusów w KROKU 3
+    ['summary', 'characters', 'world', 'scenes'].forEach(type => {
+        const statusElement = document.getElementById(`save-${type}-status`);
+        if (statusElement) {
+            statusElement.textContent = 'Niezapisane';
+            statusElement.className = 'status-tag status-none';
+        }
+    });
 
     if (step === 1) {
         document.getElementById('step-1-input').style.display = 'block';
+        document.getElementById('modal-title').textContent = 'Nowy rozdział: 1/3 Wstaw treść';
         // Reset stanu
         rawChapterDetails = {}; 
         parsedJsonData = {}; 
@@ -38,22 +69,16 @@ function openModal(modalId, step = 1) {
         document.getElementById('modal-chapter-content').value = '';
     } else if (step === 2) {
         document.getElementById('step-2-json').style.display = 'block';
+        document.getElementById('modal-title').textContent = 'Nowy rozdział: 2/3 Dane Fabularne (JSON)';
         // Wyświetlanie danych z KROKU 1
         document.getElementById('json-chapter-display').textContent = rawChapterDetails.title || 'N/A';
         document.getElementById('json-version-timestamp').textContent = rawChapterDetails.versionTimestamp || '';
         document.getElementById('modal-json-content').value = '';
     } else if (step === 3) {
         document.getElementById('step-3-review').style.display = 'block';
-        renderReviewSections(); // Wyświetlenie danych JSON w sekcjach
+        document.getElementById('modal-title').textContent = 'Nowy rozdział: 3/3 Potwierdzenie';
+        renderReviewSections(); 
     }
-    
-    // Resetowanie przycisków zapisu
-    ['SUMMARY', 'CHARACTERS', 'WORLD', 'SCENES'].forEach(type => {
-        const btn = document.getElementById(`save-${type.toLowerCase()}-btn`);
-        btn.disabled = false;
-        btn.textContent = 'Zapisz';
-        btn.style.backgroundColor = '#28a745'; 
-    });
 }
 
 function closeModal(modalId) {
@@ -75,12 +100,13 @@ async function saveChapterRaw() {
     const startBtn = document.getElementById('start-raw-save-btn');
     
     if (!chapterNumber || !title || !content) {
-        alert('BŁĄD: Numer, Tytuł i Treść muszą być wypełnione!');
+        updateStatusMessage('BŁĄD: Numer, Tytuł i Treść muszą być wypełnione!', 'error');
         return;
     }
 
     startBtn.disabled = true;
     startBtn.textContent = 'Trwa Zapis RAW...';
+    updateStatusMessage('Wysyłanie treści RAW do Lambda...', 'info');
     
     try {
         const response = await fetch(CHAPTER_MANAGER_ENDPOINT, {
@@ -103,52 +129,153 @@ async function saveChapterRaw() {
                 versionTimestamp: data.VERSION_TIMESTAMP,
                 title: data.TITLE
             };
-            alert(`Pomyślnie zapisano RAW: ${data.TITLE}. Przejdź do KROKU 2 (Wklej JSON).`);
+            updateStatusMessage(`Pomyślnie zapisano treść RAW: ${data.TITLE}. Przejdź do KROKU 2.`, 'success');
             openModal('chapterModal', 2); 
         } else {
              throw new Error('Nieoczekiwany status z serwera: ' + data.STATUS);
         }
 
     } catch (error) {
-        alert(`BŁĄD KROKU 1: ${error.message}`);
+        updateStatusMessage(`BŁĄD KROKU 1: ${error.message}`, 'error');
         console.error('Błąd zapisu RAW:', error);
         
     } finally {
         startBtn.disabled = false;
-        startBtn.textContent = '1. ZAPISZ RAW';
+        startBtn.textContent = '1. ZAPISZ TREŚĆ RAW';
     }
 }
 
 
-// --- FUNKCJA KROK 2: PRZETWARZANIE JSONA I PRZEGLĄD ---
+// --- FUNKCJA KROK 2: PRZETWARZANIE JSONA I AUTO-ZAPIS ---
 
-function processJsonAndShowReview() {
+function processJsonAndAutoSave() {
     const jsonContent = document.getElementById('modal-json-content').value;
+    const processBtn = document.getElementById('process-json-btn');
 
     if (!jsonContent) {
-        alert('BŁĄD: Pole JSON nie może być puste!');
+        updateStatusMessage('BŁĄD: Pole JSON nie może być puste!', 'error');
         return;
     }
 
+    processBtn.disabled = true;
+    processBtn.textContent = 'Trwa Parsowanie i Zapis...';
+    updateStatusMessage('Przetwarzanie JSON i inicjowanie automatycznego zapisu do baz...', 'info');
+
+
     try {
+        // 1. Parsowanie i walidacja JSON
         parsedJsonData = JSON.parse(jsonContent);
-        // Sprawdzamy kluczowe pola
         if (!parsedJsonData.streszczenie_szczegolowe || !parsedJsonData.postacie || !parsedJsonData.swiat || !parsedJsonData.sceny) {
              throw new Error('JSON musi zawierać pola: streszczenie_szczegolowe, postacie, swiat, sceny.');
         }
         
-        // Wymuszenie dodania numeru rozdziału z KROKU 1 do JSONa, jeśli go tam nie ma
-        parsedJsonData.numer_rozdzialu = rawChapterDetails.chapterNumber; 
-
-        openModal('chapterModal', 3); 
+        // 2. Wstrzyknięcie danych z KROKU 1
+        const payload = { 
+            fullAutoSaveData: parsedJsonData 
+        };
+        payload.fullAutoSaveData.rawVersionTimestamp = rawChapterDetails.versionTimestamp;
+        payload.fullAutoSaveData.numer_rozdzialu = rawChapterDetails.chapterNumber; 
         
+        // 3. Rozpoczęcie auto-zapisu
+        autoSaveAllSections(payload);
+
     } catch (e) {
-        alert(`BŁĄD PARSOWANIA JSON: ${e.message}`);
+        updateStatusMessage(`BŁĄD PARSOWANIA JSON: ${e.message}`, 'error');
+        processBtn.disabled = false;
+        processBtn.textContent = '2. PRZETWÓRZ JSON I ZACZNIJ AUTOMATYCZNY ZAPIS';
     }
 }
 
+async function autoSaveAllSections(payload) {
+    const processBtn = document.getElementById('process-json-btn');
+    
+    // Ustawienie wskaźników statusu do resetu
+    const statusMap = {
+        'CHARACTERS': 'save-characters-status',
+        'WORLD': 'save-world-status',
+        'SCENES': 'save-scenes-status',
+        'SUMMARY': 'save-summary-status'
+    };
+    
+    // Ustawienie wszystkich na 'W trakcie' przed wysłaniem
+     for (const key of Object.keys(statusMap)) {
+        const statusElement = document.getElementById(statusMap[key]);
+        if (statusElement) {
+            statusElement.textContent = 'W trakcie...';
+            statusElement.className = 'status-tag status-edit';
+        }
+    }
 
-// --- FUNKCJA KROK 3: RENDEROWANIE I ZAPIS SEKCJI ---
+
+    try {
+        const response = await fetch(CHAPTER_MANAGER_ENDPOINT, {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload) 
+        });
+        
+        if (!response.ok) {
+            const errorBody = await response.json().catch(() => ({ error: 'Brak szczegółów w JSON' }));
+            throw new Error(`Błąd HTTP: ${response.status}. Szczegóły: ${errorBody.error || 'Nieznany błąd backendu'}`);
+        }
+        
+        const data = await response.json(); 
+        
+        updateStatusMessage('Wszystkie sekcje zostały przetworzone i zapisane! Przejdź do Potwierdzenia (KROK 3).', 'success');
+        
+        // Uaktualnienie statusu sekcji w KROKU 3
+        updateReviewStatusIndicators(data.results);
+        
+        processBtn.textContent = 'ZAPISANO Pomyślnie!';
+        openModal('chapterModal', 3); 
+
+    } catch (error) {
+        // Zalogowanie błędów do konsoli
+        console.error('Błąd auto-zapisu:', error);
+
+        // Tworzenie makiety wyników z błędem globalnym dla wyświetlenia na ekranie przeglądu
+        const globalErrorResults = {};
+        for (const key of Object.keys(statusMap)) {
+            globalErrorResults[key] = { success: false, error: 'Krytyczny błąd połączenia/API.' };
+        }
+        updateReviewStatusIndicators(globalErrorResults);
+        
+        updateStatusMessage(`KRYTYCZNY BŁĄD ZAPISU: ${error.message}. Sprawdź konsolę.`, 'error');
+        openModal('chapterModal', 3); // Przejście do KROKU 3, aby pokazać błędy
+
+        
+    } finally {
+        processBtn.disabled = false;
+        processBtn.style.backgroundColor = (processBtn.textContent === 'ZAPISANO Pomyślnie!') ? '#218838' : '#dc3545';
+        if (processBtn.textContent !== 'ZAPISANO Pomyślnie!') {
+            processBtn.textContent = 'BŁĄD - Spróbuj Ponownie';
+        }
+    }
+}
+
+function updateReviewStatusIndicators(results) {
+    const statusMap = {
+        'CHARACTERS': 'save-characters-status',
+        'WORLD': 'save-world-status',
+        'SCENES': 'save-scenes-status',
+        'SUMMARY': 'save-summary-status'
+    };
+
+    for (const key in results) {
+        const statusElement = document.getElementById(statusMap[key]);
+        if (statusElement) {
+            if (results[key].success) {
+                statusElement.textContent = `ZAPISANO (OK)`;
+                statusElement.className = 'status-tag status-new'; // Zielony
+            } else {
+                statusElement.textContent = `BŁĄD: ${results[key].error.substring(0, 20)}...`;
+                statusElement.className = 'status-tag status-edit'; // Żółty/czerwony
+            }
+        }
+    }
+}
+
+// --- FUNKCJA KROK 3: RENDEROWANIE DANYCH DO PRZEGLĄDU ---
 
 function renderReviewSections() {
     const { streszczenie_szczegolowe, postacie, swiat, sceny, dane_statystyczne } = parsedJsonData;
@@ -200,59 +327,8 @@ function renderReviewSections() {
     }
 }
 
-async function saveSection(sectionType) {
-    const startBtn = document.getElementById(`save-${sectionType.toLowerCase()}-btn`);
-    startBtn.disabled = true;
-    startBtn.textContent = 'Zapisuję...';
 
-    // Przygotowanie payloadu na podstawie sectionType
-    let payloadData = {
-        rawVersionTimestamp: rawChapterDetails.versionTimestamp,
-        numer_rozdzialu: rawChapterDetails.chapterNumber,
-        sectionType: sectionType
-    };
-    
-    if (sectionType === 'SUMMARY') {
-        payloadData.summary = parsedJsonData.streszczenie_szczegolowe;
-        payloadData.stats = parsedJsonData.dane_statystyczne;
-        payloadData.title = parsedJsonData.tytul_rozdzialu;
-    } else if (sectionType === 'CHARACTERS') {
-         payloadData.postacie = parsedJsonData.postacie;
-    } else if (sectionType === 'WORLD') {
-         payloadData.swiat = parsedJsonData.swiat;
-    } else if (sectionType === 'SCENES') {
-         payloadData.sceny = parsedJsonData.sceny;
-    } 
-
-    try {
-        const response = await fetch(CHAPTER_MANAGER_ENDPOINT, {
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sectionUpdateData: payloadData }) 
-        });
-        
-        if (!response.ok) {
-            const errorBody = await response.json().catch(() => ({ error: 'Brak szczegółów w JSON' }));
-            throw new Error(`Błąd HTTP: ${response.status}. Szczegóły: ${errorBody.error || 'Nieznany błąd backendu'}`);
-        }
-        
-        const data = await response.json(); 
-        
-        alert(`Sukces: ${data.message}`);
-        startBtn.style.backgroundColor = '#218838'; 
-        startBtn.textContent = 'ZAPISANO!';
-        
-    } catch (error) {
-        alert(`BŁĄD ZAPISU ${sectionType}: ${error.message}`);
-        console.error(`Błąd zapisu sekcji ${sectionType}:`, error);
-        startBtn.style.backgroundColor = '#dc3545'; 
-        startBtn.textContent = 'BŁĄD ZAPISU';
-        
-    }
-}
-
-
-// --- POZOSTAŁE FUNKCJE ---
+// --- POZOSTAŁE FUNKCJE (Dashboard Fetch) ---
 
 async function fetchData() {
     try {
