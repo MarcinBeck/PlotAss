@@ -1,4 +1,4 @@
-import { fetchDashboardData, DASHBOARD_API_ENDPOINT } from './utils.js';
+import { fetchDashboardData, DASHBOARD_API_ENDPOINT, CHARACTERS_CHAPTER_API_ENDPOINT } from './utils.js';
 
 // === FUNKCJE API DLA DETALI ===
 
@@ -42,9 +42,10 @@ async function fetchCharacterDetails(charId) {
     return data;
 }
 
-// Pobieranie listy postaci dla danego rozdziału
+// NOWA FUNKCJA: Pobieranie listy postaci dla danego rozdziału
 async function fetchChapterCharacters(chapterId) {
-    const response = await fetch(`${DASHBOARD_API_ENDPOINT}?chapterCharactersId=${chapterId}`, { method: 'GET' });
+    // KLUCZOWA ZMIANA: Używamy nowego dedykowanego endpointu
+    const response = await fetch(`${CHARACTERS_CHAPTER_API_ENDPOINT}?chapterCharactersId=${chapterId}`, { method: 'GET' });
     const data = await response.json();
     if (!response.ok) {
         throw new Error(`BŁĄD API (Characters): ${data.error || 'Nieznany błąd.'}`);
@@ -101,17 +102,16 @@ async function renderChapterDetails(data) {
     const summaryText = document.getElementById('summary-text');
     if (summaryText) summaryText.textContent = chapter.SUMMARY || 'Brak szczegółowego streszczenia.';
 
-    // --- 1. SEKCIJA POSTACI (Wymuszenie wyświetlania licznika) ---
+    // --- 1. SEKCIJA POSTACI ---
     const charListDetail = document.getElementById('character-list-detail');
     
     const charBoxTitle = document.querySelector('#sidebar-analysis .sidebar-box:nth-child(1) h4');
     
-    if (charListDetail) charListDetail.innerHTML = `<p class="loading-text">Pobieranie postaci...</p>`;
+    if (charListDetail) charListDetail.innerHTML = `<p class="loading-text">Ładowanie postaci...</p>`;
     
     try {
         const characters = await fetchChapterCharacters(chapterId); // Używamy nowej funkcji
         
-        // --- KLUCZOWA ZMIANA: Wyświetlenie poprawnej liczby ---
         if (charBoxTitle) charBoxTitle.textContent = `Postacie (${characters.length})`; 
 
         if (charListDetail) charListDetail.innerHTML = '';
@@ -140,7 +140,7 @@ async function renderChapterDetails(data) {
     }
 
 
-    // --- 2. SEKCIJA SCEN (Renderowanie scen) ---
+    // --- 2. SEKCIJA SCEN ---
     const sceneListDetail = document.getElementById('scene-list-detail');
     const sceneCount = chapter.SCENES_COUNT || 0;
     
@@ -176,7 +176,7 @@ async function renderChapterDetails(data) {
     }
 
 
-    // --- 3. SEKCIJA ŚWIAT (Bez zmian) ---
+    // --- 3. SEKCIJA ŚWIAT ---
     const worldInfoDetail = document.getElementById('world-info-detail');
     const currentWorld = worldDetails?.latestDetails || {ID: chapter.WORLD_NAME || 'N/A', NAZWA: chapter.WORLD_NAME || 'N/A', OPIS: 'Brak detali w bazie.'};
 
@@ -187,7 +187,7 @@ async function renderChapterDetails(data) {
     `;
 }
 
-// ... (renderCharacterDetails, renderWorldDetails i loadDetailsPage - reszta pliku bez zmian) ...
+// Renderowanie detali postaci (Ewolucja) - bez zmian
 function renderCharacterDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     
@@ -246,6 +246,7 @@ function renderCharacterDetails(data) {
     if (content) content.innerHTML = html;
 }
 
+// Renderowanie detali świata (Ewolucja) - bez zmian
 function renderWorldDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     
@@ -312,6 +313,7 @@ export async function loadDetailsPage(id, type) {
     try {
         if (type === 'chapter') {
             const details = await fetchChapterDetails(id);
+            // Czekamy na zakończenie renderowania (w tym asynchronicznego pobierania postaci)
             await renderChapterDetails(details); 
             
         } else if (type === 'character') {
