@@ -118,40 +118,34 @@
             
             <div id="analysis-summary" class="analysis-results" style="display: none;">
                 <h3>Status Analizy: <span id="analysis-status"></span></h3>
-                <p>Identyfikator wersji: <code id="version-timestamp"></code></p>
+                
+                <div style="background-color: #f0f0f0; padding: 10px; margin-bottom: 15px; border-radius: 6px;">
+                    <p style="margin: 0; font-size: 1.1em;">
+                        <strong>Tytuł:</strong> <span id="analysis-chapter-title"></span>
+                    </p>
+                    <p style="margin: 5px 0 0; font-size: 0.9em;">
+                        <strong>Data Analizy:</strong> <code id="version-timestamp"></code>
+                    </p>
+                </div>
+                
                 <p>Wszystkie zmiany zostały automatycznie przeanalizowane przez system LLM. Proszę zweryfikuj zmiany i zatwierdź.</p>
 
                 <div class="analysis-section" style="background-color: #e6f7ff;">
-    <div class="result-header">
-        <span>Streszczenie Analizy (Gemini):</span>
-    </div>
-    <p id="gemini-summary-text" style="margin: 0; font-style: italic;">Oczekiwanie na streszczenie...</p>
-</div>
+                    <div class="result-header">
+                        <span>Streszczenie Analizy (Gemini):</span>
+                    </div>
+                    <p id="gemini-summary-text" style="margin: 0; font-style: italic;">Oczekiwanie na streszczenie...</p>
+                </div>
                 
                 <div class="analysis-section">
                     <div class="result-header">
-                        <span>Bohaterowie:</span>
-                        <span id="char-changes-count" class="status-tag status-edit">0 Edycja / 0 Nowy</span>
+                        <span>Zidentyfikowani Bohaterowie:</span>
+                        <span id="char-count-display" class="status-tag status-edit">0 Postaci</span>
                     </div>
-                    <ul id="character-analysis-list" class="item-list"></ul>
+                    <ul id="character-analysis-list" class="item-list" style="min-height: auto; border: none;">
+                        <p style="margin: 0; font-style: italic; color: #696969;">Lista bohaterów.</p>
+                    </ul>
                 </div>
-
-                <div class="analysis-section">
-                    <div class="result-header">
-                        <span>Wydarzenia Fabularne:</span>
-                        <span id="event-changes-count" class="status-tag status-new">0 Nowy</span>
-                    </div>
-                    <ul id="event-analysis-list" class="item-list"></ul>
-                </div>
-
-                <div class="analysis-section">
-                    <div class="result-header">
-                        <span>Światy/Lokacje:</span>
-                        <span id="world-changes-count" class="status-tag status-none">0 Bez Zmian</span>
-                    </div>
-                    <ul id="world-analysis-list" class="item-list"></ul>
-                </div>
-
                 <button id="final-confirm-btn" class="add-btn" style="background-color: #28a745;">ZATWIERDŹ I WDRÓŻ ZMIANY FABUŁY</button>
             </div>
         </div>
