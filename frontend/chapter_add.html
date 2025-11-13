@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dodaj Rozdział - Krok 1/3</title>
+    <link rel="stylesheet" href="css/styles.css"> 
+</head>
+<body>
+
+    <header>
+        <h1>LLM Fabularny Asystent</h1>
+        <nav>
+            <a href="dashboard.html">Dashboard</a>
+            <a href="characters.html">Postacie</a>
+            <a href="scenes.html">Sceny</a>
+            <a href="worlds.html">Węzły</a>
+        </nav>
+    </header>
+
+    <div class="page-container">
+        <h2 id="page-title">Ładowanie...</h2>
+
+        <div id="status-alert" style="padding: 10px; margin-bottom: 15px; border-radius: 4px; display: none;"></div>
+
+        <div id="step-1-input" class="analysis-section" style="display: none;">
+            <h3>1/3 Wstaw treść</h3>
+            <label for="chapter-number">Numer Rozdziału (np. 1, 2, 3):</label>
+            <input type="number" id="chapter-number" value="1">
+
+            <label for="chapter-title">Tytuł Rozdziału:</label>
+            <input type="text" id="chapter-title" placeholder="Wyprawa na Północ">
+            
+            <label for="chapter-content">Treść Rozdziału (Surowy Tekst):</label>
+            <textarea id="chapter-content" rows="12" placeholder="Wklej tu cały tekst rozdziału."></textarea>
+            
+            <button id="start-raw-save-btn" class="add-btn" onclick="saveChapterRaw()">1. ZAPISZ TREŚĆ RAW I PRZEJDŹ DO KROKU 2</button>
+        </div>
+        
+        <div id="step-2-json" class="analysis-section" style="display: none;">
+            <h3>2/3 Dane Fabularne (JSON)</h3>
+            <p style="font-size: 0.9em; color: #555;">Rozdział: <strong id="json-chapter-display"></strong> (<code id="json-version-timestamp"></code>)</p>
+
+            <label for="json-content">Wklej Strukturę JSON:</label>
+            <textarea id="json-content" rows="18" placeholder="Wklej tutaj pełną strukturę JSON z danymi statystycznymi, scenami i postaciami."></textarea>
+            
+            <button id="process-json-btn" class="add-btn" style="background-color: #2e64a1;" onclick="processJsonAndAutoSave()">2. PRZETWÓRZ JSON I ZACZNIJ AUTOMATYCZNY ZAPIS (Krok 3)</button>
+        </div>
+        
+        <div id="step-3-review" class="analysis-results" style="display: none;">
+            <h3>3/3 Potwierdzenie Zapisu</h3>
+            <p>Rozdział: <strong id="review-chapter-display"></strong> (<code id="review-version-timestamp"></code>)</p>
+            <p style="font-weight: bold; margin-top: 15px;">Poniższe dane zostały automatycznie zapisane do odpowiednich baz danych:</p>
+
+            <div class="analysis-section">
+                <div class="result-header">
+                    <span>STRESZCZENIE i STATYSTYKI (LLM_Chapters_V2):</span>
+                    <span id="save-summary-status" class="status-tag status-none">Niezapisane</span>
+                </div>
+                <p id="review-summary-text" style="margin: 0; font-style: italic;"></p>
+                <p style="margin-top: 10px; font-size: 0.85em; color: #555;">Suma wyrazów: <strong id="review-words-count">N/A</strong></p>
+            </div>
+            
+            <div class="analysis-section">
+                <div class="result-header">
+                    <span>BOHATEROWIE (LLM_Characters):</span>
+                    <span id="review-char-count" class="status-tag status-edit">0 Postaci</span>
+                    <span id="save-characters-status" class="status-tag status-none">Niezapisane</span>
+                </div>
+                <ul id="review-character-list" class="item-list" style="min-height: auto; border: none;"></ul>
+            </div>
+            
+            <div class="analysis-section">
+                <div class="result-header">
+                    <span>ŚWIAT (LLM_Worlds):</span>
+                    <span id="review-world-name" class="status-tag status-none">N/A</span>
+                    <span id="save-world-status" class="status-tag status-none">Niezapisane</span>
+                </div>
+                <p id="review-world-description" style="margin: 0; font-style: italic;"></p>
+            </div>
+            
+            <div class="analysis-section">
+                <div class="result-header">
+                    <span>SCENY (LLM_PlotEvents):</span>
+                    <span id="review-scene-count" class="status-tag status-new">0 Scen</span>
+                    <span id="save-scenes-status" class="status-tag status-none">Niezapisane</span>
+                </div>
+                <ul id="review-scene-list" class="item-list" style="min-height: auto; border: none;"></ul>
+            </div>
+
+            <a href="dashboard.html" class="add-btn" style="background-color: #218838; margin-top: 20px;">ZAKOŃCZ I WRÓĆ DO DASHBOARDU</a>
+        </div>
+        
+    </div>
+    
+    <script src="js/app.js"></script> 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof initChapterAddPage === 'function') {
+                initChapterAddPage();
+            }
+        });
+    </script>
+</body>
+</html>
