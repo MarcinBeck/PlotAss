@@ -347,9 +347,16 @@ h1 { margin: 0; font-size: 24px; }
 }
 
 .char-detail-item p {
-    margin: 0;
+    margin: 2px 0; /* Dodatkowy margines dla przerwy po metadanych */
     font-size: 0.9em;
     color: #444;
+}
+
+/* KLUCZOWA ZMIANA: Stylizacja metadanych sceny/postaci */
+.metadata-line {
+    font-size: 0.8em; /* Mniejsza czcionka */
+    color: #888; /* Szary kolor */
+    margin: 2px 0 8px 0; /* Większy odstęp (enter) po metadanych */
 }
 
 .char-detail-item a {
@@ -357,35 +364,28 @@ h1 { margin: 0; font-size: 24px; }
     color: inherit; 
 }
 
-/* KLUCZOWA POPRAWKA: Naprawia broken layout dla POSTACI */
-/* Zapewnia, że strong w boksie postaci jest tylko pogrubiony i nie wymusza łamania linii */
+/* Normalizacja strong, aby zapobiec konfliktom */
 .char-detail-item strong {
-    font-weight: bold !important; 
-    color: inherit !important;     
-    font-size: 1em !important;     
-    display: inline !important;    
+    font-weight: bold; 
+    color: inherit;     
+    font-size: 1em;     
+    display: inline;    
 }
 
-/* KLUCZOWA POPRAWKA: Naprawia sceny */
-/* Zapewnia, że tytuł sceny łamie linię, ale używa znormalizowanego stylu */
+/* Styl dla tytułu Sceny */
 .scene-item strong {
     font-weight: bold;
-    color: #01579b; /* Kolor nazwy sceny */
+    color: #01579b; 
     font-size: 1em;
-    display: block; /* Wymusza łamanie linii po tytule sceny */
+    display: block; 
     margin-bottom: 3px;
-}
-
-.metadata-line {
-    font-size: 0.85em;
-    color: #888;
-    margin: 2px 0 5px 0;
 }
 
 .scene-description {
     font-size: 0.95em;
     color: #333;
     line-height: 1.5;
+    margin-top: 5px; /* Dodatkowa przerwa (enter) */
     margin-bottom: 0;
 }
 
