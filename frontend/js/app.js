@@ -12,7 +12,8 @@ const CHAPTER_MANAGER_ENDPOINT = 'https://hdhzbujrg3tgyc64wdnseswqxi0lhgci.lambd
 document.addEventListener('DOMContentLoaded', fetchData);
 
 // === Zmienne Globalne dla Workflow ===
-let rawChapterDetails = {}; // Przechowuje dane z KROKU 1: { chapterId: 'CH-X', versionTimestamp: 'YYYY-MM-DDTHH:MM:SSZ', title: 'Tytuł' }
+// Przechowuje dane z KROKU 1: { chapterNumber: X, chapterId: 'CH-X', versionTimestamp: 'YYYY-MM-DDTHH:MM:SSZ', title: 'Tytuł' }
+let rawChapterDetails = {}; 
 
 // --- FUNKCJE NAWIGACYJNE MODALA ---
 
@@ -97,6 +98,7 @@ async function saveChapterRaw() {
         
         if (data.STATUS === 'RAW_SAVED_READY_FOR_ANALYSIS') {
             rawChapterDetails = {
+                chapterNumber: chapterNumber, // Zapisujemy numer rozdziału
                 chapterId: data.CHAPTER_ID,
                 versionTimestamp: data.VERSION_TIMESTAMP,
                 title: data.TITLE
@@ -144,6 +146,9 @@ async function startJsonAnalysis() {
 
     // Dodajemy dane KROKU 1 do wysyłanego obiektu JSONa
     jsonParsed.rawVersionTimestamp = rawChapterDetails.versionTimestamp;
+    
+    // FIX: Nadpisujemy numer rozdziału numerem z KROKU 1, aby zapewnić spójność klucza w backendzie
+    jsonParsed.numer_rozdzialu = rawChapterDetails.chapterNumber; 
     
     try {
         const response = await fetch(CHAPTER_MANAGER_ENDPOINT, {
