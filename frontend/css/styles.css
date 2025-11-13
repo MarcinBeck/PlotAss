@@ -132,7 +132,7 @@ h1 { margin: 0; font-size: 24px; }
     color: #555;
 }
 
-/* === Modal (Layer) Styles (Dla kompatybilności ze starymi komponentami) === */
+/* === Modal (Layer) Styles === */
 .modal {
     display: none; 
     position: fixed;
@@ -219,7 +219,7 @@ h1 { margin: 0; font-size: 24px; }
 /* === Style dla dedykowanej strony dodawania/detali === */
 .page-container {
     padding: 40px;
-    /* KLUCZOWA ZMIANA: 80% szerokości strony */
+    /* 80% szerokości strony */
     max-width: 80%; 
     margin: 0 auto;
     min-width: 700px; 
@@ -298,13 +298,13 @@ h1 { margin: 0; font-size: 24px; }
     padding-bottom: 5px;
 }
 
-/* Styl dla Streszczenia (Streszczenie ma być pełne, bez ucinania) */
+/* Styl dla Streszczenia (Pełna treść) */
 #main-summary-content #summary-text {
-    /* KLUCZOWA ZMIANA: Ujednolicenie stylu streszczenia z opisem sceny */
+    /* Ujednolicenie stylu streszczenia z opisem sceny */
     font-size: 0.95em;
     line-height: 1.5;
     color: #333;
-    font-style: normal; /* Usuwamy kursywę */
+    font-style: normal;
     margin: 0 0 20px 0;
 }
 
@@ -329,7 +329,7 @@ h1 { margin: 0; font-size: 24px; }
     padding: 10px 0;
     border-bottom: 1px dashed #ccc; 
     font-size: 0.95em;
-    line-height: 1.3; /* Zmniejszenie odstępów w liście detali */
+    line-height: 1.3; 
 }
 
 .scene-item:last-child, .char-detail-item:last-child {
@@ -357,20 +357,22 @@ h1 { margin: 0; font-size: 24px; }
     color: inherit; 
 }
 
-/* NAPRAWA: Zapewnienie, że strong jest tylko bold, bez dodatkowych stylów */
+/* KLUCZOWA POPRAWKA: Naprawia broken layout dla POSTACI */
+/* Zapewnia, że strong w boksie postaci jest tylko pogrubiony i nie wymusza łamania linii */
 .char-detail-item strong {
-    font-weight: bold !important; /* Wymuś tylko pogrubienie */
-    color: inherit !important;     /* Użyj koloru elementu nadrzędnego (#333) */
-    font-size: 1em !important;     /* Użyj normalnego rozmiaru */
-    display: inline !important;    /* Użyj inline, aby nie wymuszać enterów po sobie */
+    font-weight: bold !important; 
+    color: inherit !important;     
+    font-size: 1em !important;     
+    display: inline !important;    
 }
 
-/* Dodatkowa reguła na wypadek, gdyby strong miał display: block w innym miejscu */
+/* KLUCZOWA POPRAWKA: Naprawia sceny */
+/* Zapewnia, że tytuł sceny łamie linię, ale używa znormalizowanego stylu */
 .scene-item strong {
     font-weight: bold;
-    color: #01579b; /* Kolor nazwy sceny, ale bez innych zmian */
+    color: #01579b; /* Kolor nazwy sceny */
     font-size: 1em;
-    display: block; /* Tytuł Sceny musi być w nowej linii */
+    display: block; /* Wymusza łamanie linii po tytule sceny */
     margin-bottom: 3px;
 }
 
