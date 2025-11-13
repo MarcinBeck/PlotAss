@@ -1,9 +1,3 @@
-// Plik: frontend/js/app.js (LOGIKA AUTO-SAVE I DETALE POSTACI)
-
-// ====================================================================
-// PAMIĘTAJ: Wklej swoje adresy URL z API Gateway!
-// ====================================================================
-
 // DashboardDataResolver (GET - Ładowanie statystyk i detale postaci)
 const DASHBOARD_API_ENDPOINT = 'https://kggk7qj2bk.execute-api.eu-north-1.amazonaws.com/FINAL_SUCCESS/DashboardDataResolver'; 
 // ChapterManager (POST - Dodawanie rozdziału, wywoływanie analizy)
@@ -217,7 +211,6 @@ async function autoSaveAllSections(payload) {
 
 
     try {
-        // WYKONANIE GŁÓWNEGO ZAPISU DO LAMBDA
         const response = await fetch(CHAPTER_MANAGER_ENDPOINT, {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
@@ -244,12 +237,7 @@ async function autoSaveAllSections(payload) {
 
         const globalErrorResults = {};
         for (const key of Object.keys(statusMap)) {
-            // W przypadku błędu z Lambda (500), musimy ręcznie zgrupować błędy
-            if (error.message.includes('BŁĄD BACKENDU') && error.message.includes('ValidationException')) {
-                 globalErrorResults[key] = { success: false, error: 'Błąd Danych w DynamoDB.' };
-            } else {
-                 globalErrorResults[key] = { success: false, error: 'Krytyczny błąd połączenia/API.' };
-            }
+            globalErrorResults[key] = { success: false, error: 'Krytyczny błąd połączenia/API.' };
         }
         updateReviewStatusIndicators(globalErrorResults);
         
@@ -352,6 +340,9 @@ async function viewCharacterDetails(charId) {
     const typeElement = document.getElementById('char-latest-type');
     const historyContainer = document.getElementById('char-chapters-history');
     
+    // Nowy element do statusu (z dashboard.html)
+    const latestChapterElement = document.getElementById('char-latest-chapter'); 
+    
     nameElement.textContent = 'Ładowanie...';
     historyContainer.innerHTML = '<p class="loading-text">Pobieranie historii postaci...</p>';
 
@@ -370,6 +361,8 @@ async function viewCharacterDetails(charId) {
         statusElement.textContent = latest.SZCZEGOLY?.status || 'Brak statusu';
         roleElement.textContent = latest.ROLA_W_ROZDZIALE || 'Brak roli';
         typeElement.textContent = latest.SZCZEGOLY?.typ || 'N/A';
+        // Wyświetlanie numeru rozdziału, z którego pochodzi ostatni wpis
+        latestChapterElement.textContent = latest.ROZDZIAL_NUMER ? `Rozdział ${latest.ROZDZIAL_NUMER}` : 'N/A';
         
         // 4. Renderowanie historii ewolucji
         renderCharacterHistory(data.chaptersHistory);
@@ -390,14 +383,23 @@ function renderCharacterHistory(chaptersHistory) {
         return;
     }
     
+    // Sortujemy rozdziały malejąco (najnowszy na górze)
+    chaptersHistory.sort((a, b) => {
+        const numA = parseInt(a.chapterId.replace('CH-', ''));
+        const numB = parseInt(b.chapterId.replace('CH-', ''));
+        return numB - numA;
+    });
+
     chaptersHistory.forEach(chapter => {
+        const chapterNumber = chapter.chapterId.replace('CH-', '');
+        
         // Tytuł Rozdziału (Sekcja rozwijana - <details>)
         const chapterDiv = document.createElement('div');
         chapterDiv.className = 'chapter-history-group';
         chapterDiv.innerHTML = `
             <details class="analysis-section" open>
-                <summary style="font-weight: bold; cursor: pointer; padding: 5px 0;">
-                    ROZDZIAŁ ${chapter.chapterId.replace('CH-', '')} (${chapter.versions.length} Wersji)
+                <summary style="font-weight: bold; cursor: pointer; padding: 5px 0; font-size: 1.1em;">
+                    ROZDZIAŁ ${chapterNumber} (${chapter.versions.length} Wersji)
                 </summary>
                 <ul class="version-list" style="list-style: none; padding-left: 0;"></ul>
             </details>
@@ -405,22 +407,27 @@ function renderCharacterHistory(chaptersHistory) {
         
         const versionList = chapterDiv.querySelector('.version-list');
         
-        // Wersje w ramach Rozdziału (Data i Detale)
+        // Wersje w ramach Rozdziału (Data i Detale) - sortowanie malejąco
         chapter.versions.sort((a, b) => new Date(b.versionTimestamp) - new Date(a.versionTimestamp)).forEach(version => {
             const versionLi = document.createElement('li');
             const formattedDate = new Date(version.versionTimestamp).toLocaleString('pl-PL');
             
+            // Dostosowujemy wyświetlanie szczegółów, aby pasowało do żądania użytkownika (rola_w_rozdziale, status, typ)
+            const detailsHtml = `
+                <p style="margin-top: 5px; font-size: 0.9em;">
+                    **Rola w Rozdziale:** ${version.rola_w_rozdziale} <br>
+                    **Typ:** ${version.szczegoly?.typ || 'N/A'} <br>
+                    **Status:** ${version.szczegoly?.status || 'N/A'}
+                </p>
+            `;
+
             // Tworzymy rozwijaną sekcję dla każdej wersji
             versionLi.innerHTML = `
                 <details style="margin-top: 10px; border-left: 3px solid #007bff; padding-left: 10px;">
                     <summary style="cursor: pointer;">
-                        Wersja z: <strong>${formattedDate}</strong>
+                        Wersja wpisu z: <strong>${formattedDate}</strong>
                     </summary>
-                    <p style="margin-top: 5px; font-size: 0.9em;">
-                        **Rola w Rozdziale:** ${version.rola_w_rozdziale} <br>
-                        **Status:** ${version.szczegoly?.status || 'N/A'} <br>
-                        **Typ:** ${version.szczegoly?.typ || 'N/A'}
-                    </p>
+                    ${detailsHtml}
                 </details>
             `;
             versionList.appendChild(versionLi);
