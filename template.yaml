@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: PlotAss - Wdrożenie Serverless z GitHub
+
+Resources:
+  # 1. Funkcja ChapterManager
+  ChapterManagerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: PlotAss-ChapterManager
+      Runtime: nodejs20.x
+      # Wskazuje na katalog główny repozytorium, które jest źródłem
+      CodeUri: ./ 
+      # Wskazuje na plik w podkatalogu 'backend' i nazwę handlera 'handler'
+      Handler: backend/ChapterManager.handler 
+      Timeout: 15 # Dłuższy timeout dla analizy Gemini
+      MemorySize: 256
+      Policies:
+        # Wymagane, bo funkcje korzystają z DynamoDB
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBFullAccess # UWAGA: Zalecam zawężenie tego po pierwszym wdrożeniu!
+
+  # 2. Funkcja DashboardDataResolver
+  DashboardDataResolverFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: PlotAss-DashboardDataResolver
+      Runtime: nodejs20.x
+      CodeUri: ./
+      Handler: backend/DashboardDataResolver.handler
+      Timeout: 10
+      MemorySize: 128
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBReadAccess
+
+  # 3. Funkcja LLM_QueryResolver
+  LLMQueryResolverFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: PlotAss-LLMQueryResolver
+      Runtime: nodejs20.x
+      CodeUri: ./
+      Handler: backend/LLM_QueryResolver.handler
+      Timeout: 10
+      MemorySize: 128
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBReadAccess
+
+# Wskazówka: Domyślnie Node.js w mjs eksportuje `handler`, więc format `backend/Plik.handler` jest poprawny.
