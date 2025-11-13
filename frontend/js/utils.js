@@ -2,6 +2,8 @@
 export const DASHBOARD_API_ENDPOINT = 'https://kggk7qj2bk.execute-api.eu-north-1.amazonaws.com/FINAL_SUCCESS/DashboardDataResolver'; 
 export const CHAPTER_MANAGER_ENDPOINT = 'https://hdhzbujrg3tgyc64wdnseswqxi0lhgci.lambda-url.eu-north-1.on.aws/'; 
 
+export const CHARACTERS_CHAPTER_API_ENDPOINT = 'https://k762us077c.execute-api.eu-north-1.amazonaws.com/default/getCharactersForChapter';
+
 // === FUNKCJE POMOCNICZE ===
 
 export function updateStatusMessage(message, type = 'info') {
