@@ -7,7 +7,6 @@ phases:
       - echo "Instalacja: Node.js"
   build:
     commands:
-      # Poniżej znajduje się sekcja, w której występował błąd:
       - echo "Rozpoczynanie pakowania funkcji Lambda..."
       - zip -j ChapterManager.zip backend/ChapterManager.mjs
       - zip -j DashboardDataResolver.zip backend/DashboardDataResolver.mjs
