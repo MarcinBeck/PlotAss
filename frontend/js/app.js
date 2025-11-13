@@ -21,6 +21,22 @@ function openModal(modalId) {
     document.getElementById('input-form').style.display = 'block';
     document.getElementById('analysis-summary').style.display = 'none';
     
+    // Czyścimy poprzednie dane modala
+    document.getElementById('modal-chapter-id').value = 'CH-01';
+    document.getElementById('modal-chapter-title').value = '';
+    document.getElementById('modal-chapter-content').value = '';
+    document.getElementById('gemini-summary-text').textContent = 'Oczekiwanie na streszczenie...';
+    document.getElementById('analysis-chapter-title').textContent = '';
+    document.getElementById('version-timestamp').textContent = '';
+    document.getElementById('char-count-display').textContent = '0 Postaci';
+    // Wyczyść listę i ustaw placeholder
+    const charList = document.getElementById('character-analysis-list');
+    if (charList) {
+        charList.innerHTML = '<p style="margin: 0; font-style: italic; color: #696969;">Lista bohaterów.</p>';
+        charList.style.border = 'none'; // Ustawienie z dashboard.html
+    }
+
+
     const statusDiv = document.getElementById('analysis-status');
     if (statusDiv) statusDiv.textContent = 'Oczekujące...';
 }
@@ -122,55 +138,16 @@ function updateCharacterSection(charactersData) {
 }
 
 
-// --- FUNKCJE ANALIZY W MODALU ---
+// --- FUNKCJE CTA ---
 
-// Funkcja pomocnicza do tworzenia elementu listy analizy
-function createAnalysisItem(item) {
-    const li = document.createElement('li');
-    const statusClass = item.status === 'Nowy' ? 'status-new' : (item.status === 'Edycja' ? 'status-edit' : 'status-none');
-    
-    li.className = 'result-item';
-    li.innerHTML = `
-        <div>
-            <strong>${item.name}</strong> 
-            <span class="status-tag ${statusClass}">${item.status}</span>
-            <p style="margin: 5px 0 0; font-size: 0.9em;">${item.details}</p>
-        </div>
-        <button class="cta-btn" onclick="alert('Podgląd szczegółów ${item.name}')">Podgląd</button>
-    `;
-    return li;
+// Funkcja do nawigacji do podglądu rozdziału
+function viewChapter(id) {
+    alert(`Otwieram podgląd rozdziału: ${id}. Logika nawigacji zostanie zaimplementowana później.`);
 }
 
+// USUNIĘTO funkcje createAnalysisItem i updateAnalysisSection
 
-// Funkcja pomocnicza do bezpiecznego renderowania listy i aktualizacji licznika
-const updateAnalysisSection = (listId, countId, dataArray, newTag, editTag) => {
-    const list = document.getElementById(listId);
-    const countElement = document.getElementById(countId); 
-    
-    if (list) { 
-        list.innerHTML = '';
-        if (dataArray && dataArray.length > 0) {
-             dataArray.forEach(item => list.appendChild(createAnalysisItem(item)));
-        } else {
-             list.innerHTML = '<p style="color:#696969; font-size:0.9em;">Brak zmian lub brak nowych danych.</p>';
-        }
-    }
-
-    if (countElement) { 
-        const newCount = dataArray.filter(c => c.status === newTag).length;
-        const editCount = dataArray.filter(c => c.status === editTag).length;
-        const noneCount = dataArray.filter(c => c.status !== newTag && c.status !== editTag).length;
-        
-        let countText = '';
-        if (newCount > 0) countText += `${newCount} Nowy`;
-        if (editCount > 0) countText += (countText ? ' / ' : '') + `${editCount} Edycja`;
-        if (noneCount > 0) countText += (countText ? ' / ' : '') + `${noneCount} Bez Zmian`;
-
-        countElement.textContent = countText || `0 Zmian`;
-        countElement.className = `status-tag ${newCount > 0 || editCount > 0 ? 'status-edit' : 'status-none'}`;
-    }
-};
-
+// --- FUNKCJA GŁÓWNA: ANALIZA W MODALU ---
 
 async function startChapterAnalysis() {
     const chapterId = document.getElementById('modal-chapter-id').value;
@@ -213,32 +190,52 @@ async function startChapterAnalysis() {
 
         // --- SUKCES ANALIZY ---
         
-        // Wyświetlanie RZECZYWISTEJ ANALIZY (z Lambda)
-        if (summaryElement && data.ANALYSIS_SUMMARY) {
-            summaryElement.textContent = data.ANALYSIS_SUMMARY; 
-        } else if (summaryElement) {
-            summaryElement.textContent = "Analiza Gemini nie dostarczyła podsumowania.";
-        }
+        const identifiedCharacters = data.IDENTIFIED_CHARACTERS || [];
+        const analysisSummary = data.ANALYSIS_SUMMARY || "Analiza Gemini nie dostarczyła podsumowania.";
         
-        // PUSTE DANE TESTOWE (USUNIĘTO SYMULACJĘ)
-        const charChanges = []; 
-        const eventChanges = []; 
-        const worldChanges = []; 
-        
+        // 1. Zmiana widoku w Modalu
         document.getElementById('input-form').style.display = 'none';
         document.getElementById('analysis-summary').style.display = 'block';
 
+        // 2. Wyświetlanie podstawowych informacji: STATUS, DATE, TITLE
         statusDiv.textContent = data.STATUS || 'ANALYZED';
         statusDiv.style.color = '#28a745';
-        document.getElementById('version-timestamp').textContent = data.VERSION_TIMESTAMP;
+        // Formatowanie daty dla lepszej czytelności
+        document.getElementById('version-timestamp').textContent = new Date(data.VERSION_TIMESTAMP).toLocaleString('pl-PL'); 
+        document.getElementById('analysis-chapter-title').textContent = title; 
         
-        // RENDEROWANIE CZYSTYCH DANYCH
-        updateAnalysisSection('character-analysis-list', 'char-changes-count', charChanges, 'Nowy', 'Edycja');
-        updateAnalysisSection('event-analysis-list', 'event-changes-count', eventChanges, 'Nowy', 'Edycja');
-        updateAnalysisSection('world-analysis-list', 'world-changes-count', worldChanges, 'Nowy', 'Edycja');
+        // 3. Wyświetlanie RZECZYWISTEGO Streszczenia
+        if (summaryElement) {
+            summaryElement.textContent = analysisSummary; 
+        }
 
-
-        // Aktywacja przycisku zatwierdzenia
+        // 4. Wyświetlanie Bohaterów
+        const charList = document.getElementById('character-analysis-list');
+        const charCountDisplay = document.getElementById('char-count-display');
+        
+        if (charList) {
+             charList.innerHTML = ''; // Czyścimy placeholder
+             charCountDisplay.textContent = `${identifiedCharacters.length} Postaci`;
+             charCountDisplay.className = `status-tag ${identifiedCharacters.length > 0 ? 'status-edit' : 'status-none'}`;
+             
+             if (identifiedCharacters.length > 0) {
+                 identifiedCharacters.forEach((name, index) => {
+                     const li = document.createElement('li');
+                     // Używamy prostej struktury z listą
+                     li.innerHTML = `<span>${name}</span>`;
+                     // Dodajemy linię rozdzielającą z wyjątkiem ostatniego elementu
+                     li.style.padding = '5px 0';
+                     if (index < identifiedCharacters.length - 1) {
+                         li.style.borderBottom = '1px dotted #ccc';
+                     }
+                     charList.appendChild(li);
+                 });
+             } else {
+                  charList.innerHTML = '<p style="color:#696969; font-size:0.9em;">Brak zidentyfikowanych postaci.</p>';
+             }
+        }
+        
+        // 5. Aktywacja przycisku zatwierdzenia
         document.getElementById('final-confirm-btn').onclick = () => {
             alert(`Zmiany zatwierdzone. Nowe dane: ${data.CHAPTER_ID} zostały zapisane do baz.`);
             closeModal('chapterModal');
@@ -253,12 +250,4 @@ async function startChapterAnalysis() {
         startBtn.disabled = false;
         startBtn.textContent = 'DODAJ I ZACZNIJ ANALIZĘ';
     }
-}
-
-
-// --- FUNKCJE CTA ---
-
-// Funkcja do nawigacji do podglądu rozdziału
-function viewChapter(id) {
-    alert(`Otwieram podgląd rozdziału: ${id}. Logika nawigacji zostanie zaimplementowana później.`);
 }
