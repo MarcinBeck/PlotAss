@@ -277,9 +277,9 @@ h1 { margin: 0; font-size: 24px; }
 }
 
 #sidebar-analysis {
-    /* Układ dla 3 sekcji poniżej streszczenia */
+    /* KLUCZOWA ZMIANA: Nierówny podział kolumn: 25% Postacie, 50% Sceny, 25% Świat */
     display: grid;
-    grid-template-columns: repeat(3, 1fr); 
+    grid-template-columns: 1fr 2fr 1fr; 
     gap: 20px;
     margin-top: 30px; 
 }
@@ -347,16 +347,9 @@ h1 { margin: 0; font-size: 24px; }
 }
 
 .char-detail-item p {
-    margin: 2px 0; /* Dodatkowy margines dla przerwy po metadanych */
+    margin: 2px 0; 
     font-size: 0.9em;
     color: #444;
-}
-
-/* KLUCZOWA ZMIANA: Stylizacja metadanych sceny/postaci */
-.metadata-line {
-    font-size: 0.8em; /* Mniejsza czcionka */
-    color: #888; /* Szary kolor */
-    margin: 2px 0 8px 0; /* Większy odstęp (enter) po metadanych */
 }
 
 .char-detail-item a {
@@ -364,12 +357,19 @@ h1 { margin: 0; font-size: 24px; }
     color: inherit; 
 }
 
-/* Normalizacja strong, aby zapobiec konfliktom */
+/* Styl dla strong w postaciach (tylko bold) */
 .char-detail-item strong {
-    font-weight: bold; 
-    color: inherit;     
-    font-size: 1em;     
-    display: inline;    
+    font-weight: bold !important; 
+    color: inherit !important;     
+    font-size: 1em !important;     
+    display: inline !important;    
+}
+
+/* Styl dla metadanych (rola/status) */
+.metadata-line {
+    font-size: 0.8em; 
+    color: #888; 
+    margin: 2px 0 8px 0; 
 }
 
 /* Styl dla tytułu Sceny */
@@ -385,7 +385,7 @@ h1 { margin: 0; font-size: 24px; }
     font-size: 0.95em;
     color: #333;
     line-height: 1.5;
-    margin-top: 5px; /* Dodatkowa przerwa (enter) */
+    margin-top: 5px; 
     margin-bottom: 0;
 }
 
