@@ -19,10 +19,48 @@
     </header>
 
     <div class="page-container">
-        <h2 id="page-title">Szczegóły Rozdziału: Ładowanie...</h2>
         
-        <div id="chapter-details-content" class="analysis-section">
-            <p class="loading-text">Pobieranie pełnej wersji rozdziału i jego analizy...</p>
+        <div class="title-bar">
+            <h2 id="page-title">Szczegóły Rozdziału: Ładowanie...</h2>
+            <a href="#" id="edit-link" class="cta-btn" style="background-color: #f39c12; margin-left: auto;">EDYCJA</a>
+        </div>
+        
+        <p id="version-date" class="metadata"></p>
+        
+        <div id="chapter-details-grid">
+            
+            <div id="main-summary-content">
+                <h3 style="font-size: 1.5em; margin-bottom: 5px;">Streszczenie</h3>
+                <p id="summary-text" style="font-size: 1.2em; font-style: italic; margin-bottom: 20px;"></p>
+                
+                <h3 style="border-top: 1px dashed #ccc; padding-top: 15px;">Treść Rozdziału (Fragment)</h3>
+                <pre id="raw-content-fragment" class="content-fragment"></pre>
+            </div>
+
+            <div id="sidebar-analysis">
+                
+                <div class="sidebar-box analysis-section">
+                    <h4>Postacie (${0})</h4>
+                    <div id="character-list-detail" class="detail-list">
+                        <p class="loading-text">Ładowanie...</p>
+                    </div>
+                </div>
+
+                <div class="sidebar-box analysis-section">
+                    <h4>Sceny (${0})</h4>
+                    <div id="scene-list-detail" class="detail-list">
+                        <p class="loading-text">Ładowanie...</p>
+                    </div>
+                </div>
+                
+                <div class="sidebar-box analysis-section">
+                    <h4>Świat/Węzeł</h4>
+                    <div id="world-info-detail" class="detail-list">
+                        <p class="loading-text">Ładowanie...</p>
+                    </div>
+                </div>
+            </div>
+
         </div>
         
         <a href="chapters.html" class="add-btn" style="background-color: #555; margin-top: 30px;">&larr; Wróć do listy rozdziałów</a>
