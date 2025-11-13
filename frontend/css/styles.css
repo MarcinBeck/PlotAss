@@ -25,7 +25,7 @@ h1 { margin: 0; font-size: 24px; }
 .container { 
     padding: 40px; 
     display: grid; 
-    /* Dzieli na 4 równe kolumny */
+    /* 4 równe kolumny dla Dashboardu */
     grid-template-columns: repeat(4, 1fr); 
     gap: 30px; 
 }
@@ -132,90 +132,6 @@ h1 { margin: 0; font-size: 24px; }
     color: #555;
 }
 
-/* === Modal (Layer) Styles === */
-.modal {
-    display: none; 
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.7); 
-    padding-top: 50px;
-}
-
-.modal-content {
-    background-color: #fefefe;
-    margin: 5% auto; 
-    padding: 30px;
-    border-radius: 12px;
-    width: 80%; 
-    max-width: 900px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-    position: relative;
-}
-
-.close-btn {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    transition: color 0.3s;
-}
-
-.close-btn:hover,
-.close-btn:focus {
-    color: #333;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.modal-content textarea {
-    min-height: 200px;
-}
-
-/* === Sekcja Wyników Analizy === */
-.analysis-results {
-    margin-top: 30px;
-    border-top: 1px solid #ddd;
-    padding-top: 20px;
-}
-
-.analysis-section {
-    margin-bottom: 20px;
-    padding: 15px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-}
-
-.result-header {
-    font-weight: bold;
-    font-size: 1.2em;
-    margin-bottom: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.status-tag {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.85em;
-    font-weight: 600;
-}
-.status-new { background-color: #d4edda; color: #155724; }
-.status-edit { background-color: #fff3cd; color: #856404; }
-.status-none { background-color: #e2e3e5; color: #696969; }
-
-.result-item {
-    margin-top: 5px;
-    border-left: 3px solid #007bff;
-    padding-left: 10px;
-}
-
 /* === Style dla dedykowanej strony dodawania/detali === */
 .page-container {
     padding: 40px;
@@ -300,7 +216,6 @@ h1 { margin: 0; font-size: 24px; }
 
 /* Styl dla Streszczenia (Pełna treść) */
 #main-summary-content #summary-text {
-    /* Ujednolicenie stylu streszczenia z opisem sceny */
     font-size: 0.95em;
     line-height: 1.5;
     color: #333;
@@ -357,7 +272,7 @@ h1 { margin: 0; font-size: 24px; }
     color: inherit; 
 }
 
-/* Styl dla strong w postaciach (tylko bold) */
+/* Normalizacja strong, aby zapobiec konfliktom */
 .char-detail-item strong {
     font-weight: bold !important; 
     color: inherit !important;     
@@ -365,11 +280,11 @@ h1 { margin: 0; font-size: 24px; }
     display: inline !important;    
 }
 
-/* Styl dla metadanych (rola/status) */
+/* Stylizacja metadanych (rola/status/ID/data) */
 .metadata-line {
     font-size: 0.8em; 
     color: #888; 
-    margin: 2px 0 8px 0; 
+    margin: 2px 0 8px 0; /* Większy odstęp (enter) po metadanych */
 }
 
 /* Styl dla tytułu Sceny */
