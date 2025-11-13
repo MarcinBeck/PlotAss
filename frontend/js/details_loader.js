@@ -6,6 +6,7 @@ import { fetchDashboardData, DASHBOARD_API_ENDPOINT } from './utils.js';
 async function fetchChapterDetails(chapterId) {
     const data = await fetchDashboardData();
     
+    // Zabezpieczenie: Sprawdzamy, czy struktura chapters.latestChapters istnieje
     const latestChapters = data?.chapters?.latestChapters;
 
     if (!Array.isArray(latestChapters) || latestChapters.length === 0) { 
@@ -61,34 +62,42 @@ function renderError(containerId, message) {
     }
 }
 
-// Renderowanie detali rozdziału (Nowy Layout i dane analityczne)
+// Renderowanie detali rozdziału (Nowy Layout - BEZ TREŚCI RAW)
 function renderChapterDetails(data) {
     const { chapter, worldDetails } = data;
     
     const chapterNumber = chapter.CHAPTER_ID.replace('CH-', '');
-    document.getElementById('page-title').textContent = `${chapterNumber}: ${chapter.TITLE}`;
-    document.getElementById('edit-link').href = `chapter_add.html?step=1&id=${chapter.CHAPTER_ID}`;
     
-    // Data dodania (pod nagłówkiem)
-    document.getElementById('version-date').textContent = `Data dodania: ${new Date(chapter.VERSION_TIMESTAMP).toLocaleString('pl-PL')}`;
+    // Zabezpieczone odwołania do nagłówków
+    const pageTitle = document.getElementById('page-title');
+    if (pageTitle) pageTitle.textContent = `${chapterNumber}: ${chapter.TITLE}`;
+    
+    const editLink = document.getElementById('edit-link');
+    if (editLink) editLink.href = `chapter_add.html?step=1&id=${chapter.CHAPTER_ID}`;
+    
+    const versionDate = document.getElementById('version-date');
+    if (versionDate) versionDate.textContent = `Data dodania: ${new Date(chapter.VERSION_TIMESTAMP).toLocaleString('pl-PL')}`;
     
     // Streszczenie
-    document.getElementById('summary-text').textContent = chapter.SUMMARY || 'Brak szczegółowego streszczenia.';
+    const summaryText = document.getElementById('summary-text');
+    if (summaryText) summaryText.textContent = chapter.SUMMARY || 'Brak szczegółowego streszczenia.';
 
     // Boczna sekcja: Postacie
     const charListDetail = document.getElementById('character-list-detail');
-    const characters = chapter.CHARACTERS_LIST || []; // Używamy CHARACTERS_LIST z backendu
+    const characters = chapter.CHARACTERS || []; 
     
-    document.getElementById('char-count-display').textContent = characters.length;
+    // Aktualizacja tytułu sekcji Postacie
+    const charBoxTitle = document.querySelector('#sidebar-analysis .sidebar-box:nth-child(1) h4');
+    if (charBoxTitle) charBoxTitle.textContent = `Postacie (${characters.length})`;
     
     if (characters.length > 0) {
-        charListDetail.innerHTML = '';
+        if (charListDetail) charListDetail.innerHTML = '';
 
         characters.forEach(char => {
              const charName = char.imie || char;
              const charId = (charName || 'N/A').toUpperCase();
 
-             charListDetail.innerHTML += `
+             if (charListDetail) charListDetail.innerHTML += `
                 <a href="character_details.html?id=${charId}" class="char-box">
                     <strong>${charName}</strong>
                     Rola: ${char.rola_w_rozdziale || 'N/A'} <br>
@@ -97,19 +106,20 @@ function renderChapterDetails(data) {
              `;
         });
     } else {
-         charListDetail.innerHTML = '<p>Brak zidentyfikowanych postaci.</p>';
+         if (charListDetail) charListDetail.innerHTML = '<p>Brak zidentyfikowanych postaci.</p>';
     }
 
     // Boczna sekcja: Sceny
     const sceneListDetail = document.getElementById('scene-list-detail');
     const sceneCount = chapter.SCENES_COUNT || 0;
-    document.getElementById('scene-count-display').textContent = sceneCount;
+    
+    // Aktualizacja tytułu sekcji Sceny
+    const sceneBoxTitle = document.querySelector('#sidebar-analysis .sidebar-box:nth-child(2) h4');
+    if (sceneBoxTitle) sceneBoxTitle.textContent = `Sceny (${sceneCount})`;
     
     if (sceneCount > 0) {
-        // Generowanie placeholderów dla scen
         let sceneHtml = `<p><strong>${sceneCount}</strong> zidentyfikowanych scen:</p>`;
 
-        // Pokaż max 5 placeholderów
         for(let i = 1; i <= Math.min(sceneCount, 5); i++) {
              sceneHtml += `<div class="detail-item">
                 <a href="scene_details.html?id=SCENE-PLCHDR-${i}">Scena ${i}: (Tytuł/Opis Placeholder)</a>
@@ -119,10 +129,10 @@ function renderChapterDetails(data) {
             sceneHtml += `<p style="margin-top: 10px;">...i ${sceneCount - 5} więcej. <a href="scenes.html">Zobacz wszystkie &rarr;</a></p>`;
         }
         
-        sceneListDetail.innerHTML = sceneHtml;
+        if (sceneListDetail) sceneListDetail.innerHTML = sceneHtml;
         
     } else {
-         sceneListDetail.innerHTML = '<p>Brak zidentyfikowanych scen.</p>';
+         if (sceneListDetail) sceneListDetail.innerHTML = '<p>Brak zidentyfikowanych scen.</p>';
     }
 
 
@@ -130,8 +140,7 @@ function renderChapterDetails(data) {
     const worldInfoDetail = document.getElementById('world-info-detail');
     const currentWorld = worldDetails?.latestDetails || {ID: chapter.WORLD_NAME || 'N/A', NAZWA: chapter.WORLD_NAME || 'N/A', OPIS: 'Brak detali w bazie.'};
 
-    // Zmiana: Pełny opis, bez limitu znaków
-    worldInfoDetail.innerHTML = `
+    if (worldInfoDetail) worldInfoDetail.innerHTML = `
         <p><strong>Węzeł:</strong> ${currentWorld.NAZWA}</p>
         <p><strong>Opis:</strong> ${currentWorld.OPIS || 'Brak opisu.'}</p>
         <a href="world_details.html?id=${currentWorld.ID}">Zobacz Historię Węzła &rarr;</a>
@@ -141,7 +150,10 @@ function renderChapterDetails(data) {
 // Renderowanie detali postaci (Ewolucja)
 function renderCharacterDetails(data) {
     const { latestDetails, chaptersHistory } = data;
-    document.getElementById('page-title').textContent = `Szczegóły Postaci: ${latestDetails.IMIE}`;
+    
+    const pageTitle = document.getElementById('page-title');
+    if (pageTitle) pageTitle.textContent = `Szczegóły Postaci: ${latestDetails.IMIE}`;
+    
     const content = document.getElementById('character-details-content');
     
     let html = `
@@ -191,12 +203,16 @@ function renderCharacterDetails(data) {
         html += `</ul></details>`;
     });
 
-    content.innerHTML = html;
+    if (content) content.innerHTML = html;
 }
 
+// Renderowanie detali świata (Ewolucja)
 function renderWorldDetails(data) {
     const { latestDetails, chaptersHistory } = data;
-    document.getElementById('page-title').textContent = `Szczegóły Węzła: ${latestDetails.NAZWA}`;
+    
+    const pageTitle = document.getElementById('page-title');
+    if (pageTitle) pageTitle.textContent = `Szczegóły Węzła: ${latestDetails.NAZWA}`;
+    
     const content = document.getElementById('world-details-content');
     
     let html = `
@@ -243,12 +259,15 @@ function renderWorldDetails(data) {
         html += `</ul></details>`;
     });
 
-    content.innerHTML = html;
+    if (content) content.innerHTML = html;
 }
 
 // === FUNKCJA GŁÓWNA LOADERA ===
 export async function loadDetailsPage(id, type) {
-    document.getElementById('page-title').textContent = `Ładowanie szczegółów ${type}...`;
+    // Zabezpieczony odczyt nagłówka
+    const pageTitle = document.getElementById('page-title');
+    if (pageTitle) pageTitle.textContent = `Ładowanie szczegółów ${type}...`;
+    
     const contentContainerId = `${type}-details-content`;
 
     try {
@@ -267,7 +286,8 @@ export async function loadDetailsPage(id, type) {
     } catch (error) {
         console.error(`Błąd ładowania detali ${type}:`, error);
         if (type === 'chapter') {
-             document.getElementById('chapter-details-grid').innerHTML = `<p style="color: red; padding: 20px;">BŁĄD: ${error.message}</p>`;
+             const grid = document.getElementById('chapter-details-grid');
+             if (grid) grid.innerHTML = `<p style="color: red; padding: 20px;">BŁĄD: ${error.message}</p>`;
         } else {
              renderError(contentContainerId, error.message);
         }
