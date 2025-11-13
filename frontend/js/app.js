@@ -97,8 +97,9 @@ async function saveChapterRaw() {
         const data = await response.json(); 
         
         if (data.STATUS === 'RAW_SAVED_READY_FOR_ANALYSIS') {
+            // KLUCZOWY ZAPIS: Przechowujemy numer rozdziału dla KROKU 2
             rawChapterDetails = {
-                chapterNumber: chapterNumber, // Zapisujemy numer rozdziału
+                chapterNumber: chapterNumber, 
                 chapterId: data.CHAPTER_ID,
                 versionTimestamp: data.VERSION_TIMESTAMP,
                 title: data.TITLE
@@ -131,6 +132,14 @@ async function startJsonAnalysis() {
         return;
     }
 
+    // Dodatkowe zabezpieczenie stanu:
+    if (!rawChapterDetails.chapterNumber || !rawChapterDetails.versionTimestamp) {
+         alert('BŁĄD STANU: Nie odnaleziono danych z KROKU 1. Spróbuj powtórzyć KROK 1.');
+         startBtn.disabled = false;
+         startBtn.textContent = '2. ZATWIERDŹ JSON I ZAPISZ ANALIZĘ';
+         return;
+    }
+
     startBtn.disabled = true;
     startBtn.textContent = 'Trwa Zapis Analizy...';
 
@@ -144,17 +153,18 @@ async function startJsonAnalysis() {
         return;
     }
 
-    // Dodajemy dane KROKU 1 do wysyłanego obiektu JSONa
-    jsonParsed.rawVersionTimestamp = rawChapterDetails.versionTimestamp;
-    
-    // FIX: Nadpisujemy numer rozdziału numerem z KROKU 1, aby zapewnić spójność klucza w backendzie
-    jsonParsed.numer_rozdzialu = rawChapterDetails.chapterNumber; 
+    // KLUCZOWE WSTRZYKNIĘCIE DANYCH Z KROKU 1
+    const payload = { 
+        fullJsonData: jsonParsed 
+    };
+    payload.fullJsonData.rawVersionTimestamp = rawChapterDetails.versionTimestamp;
+    payload.fullJsonData.numer_rozdzialu = rawChapterDetails.chapterNumber; 
     
     try {
         const response = await fetch(CHAPTER_MANAGER_ENDPOINT, {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fullJsonData: jsonParsed }) // Wysyłamy cały JSON jako zagnieżdżony obiekt
+            body: JSON.stringify(payload)
         });
         
         if (!response.ok) {
@@ -178,7 +188,7 @@ async function startJsonAnalysis() {
 }
 
 
-// --- POZOSTAŁE FUNKCJE (bez zmian lub minimalne zmiany) ---
+// --- POZOSTAŁE FUNKCJE (Dashboard Fetch) ---
 
 async function fetchData() {
     try {
