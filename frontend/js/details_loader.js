@@ -37,6 +37,7 @@ async function fetchCharacterDetails(charId) {
     const response = await fetch(`${DASHBOARD_API_ENDPOINT}?charId=${charId}`, { method: 'GET' });
     const data = await response.json();
     if (!response.ok) {
+        // Rzucamy błąd, ale nie przerywamy procesu renderowania
         throw new Error(`BŁĄD API: ${data.error || 'Nieznany błąd.'}`);
     }
     return data;
@@ -52,7 +53,7 @@ async function fetchWorldDetails(worldId) {
     return data;
 }
 
-// NOWA FUNKCJA: Pobieranie scen z danego rozdziału
+// Pobieranie scen z danego rozdziału
 async function fetchChapterScenes(chapterId) {
     const response = await fetch(`${DASHBOARD_API_ENDPOINT}?chapterScenesId=${chapterId}`, { method: 'GET' });
     const data = await response.json();
@@ -91,27 +92,69 @@ async function renderChapterDetails(data) {
     const summaryText = document.getElementById('summary-text');
     if (summaryText) summaryText.textContent = chapter.SUMMARY || 'Brak szczegółowego streszczenia.';
 
-    // --- 1. SEKCIJA POSTACI (Naprawa wizualna) ---
+    // --- 1. SEKCIJA POSTACI (NOWA LOGIKA POBIERANIA Z LLM_Characters) ---
     const charListDetail = document.getElementById('character-list-detail');
-    const characters = chapter.CHARACTERS_LIST || []; 
     
+    // Priorytetowo używamy listy z pełnymi detalami z rozdziału (CHARACTERS_LIST).
+    // Jeśli pusta, używamy starego pola CHARACTERS (lista stringów).
+    let chapterCharacters = chapter.CHARACTERS_LIST || chapter.CHARACTERS || []; 
+    
+    // Konwersja na jednolity format obiektów, jeśli to lista stringów
+    if (chapterCharacters.length > 0 && typeof chapterCharacters[0] === 'string') {
+        chapterCharacters = chapterCharacters.map(name => ({ imie: name }));
+    }
+
     const charBoxTitle = document.querySelector('#analysis-sections-grid .analysis-box:nth-child(1) h4');
-    if (charBoxTitle) charBoxTitle.textContent = `Postacie (${characters.length})`;
+    if (charBoxTitle) charBoxTitle.textContent = `Postacie (${chapterCharacters.length})`;
     
-    if (characters.length > 0) {
+    let detailedCharacters = [];
+
+    if (chapterCharacters.length > 0) {
+        if (charListDetail) charListDetail.innerHTML = `<p class="loading-text">Ładowanie ${chapterCharacters.length} postaci z LLM_Characters...</p>`;
+
+        // ITERACJA I POBIERANIE DETALI Z LLM_Characters
+        for (const char of chapterCharacters) {
+            const charName = char.imie || 'N/A';
+            const charId = (charName || 'N/A').toUpperCase();
+
+            let displayChar = { 
+                imie: charName,
+                rola_w_rozdziale: char.rola_w_rozdziale || 'N/A',
+                status: char.status || 'N/A'
+            };
+            
+            // Jeśli postać została zidentyfikowana (imie jest dostępne), pobieramy jej najnowszy status z LLM_Characters
+            if (charId !== 'N/A') {
+                try {
+                    const latestDetails = await fetchCharacterDetails(charId);
+                    if (latestDetails && latestDetails.latestDetails) {
+                        // Aktualizujemy status z najnowszego rekordu
+                        displayChar.status = latestDetails.latestDetails.SZCZEGOLY?.status || displayChar.status;
+                        
+                        // Oznaczamy rolę jako pobraną z rozdziału, jeśli była dostępna
+                        if (displayChar.rola_w_rozdziale === 'N/A') {
+                             displayChar.rola_w_rozdziale = 'N/A (Aktualne dane)';
+                        }
+                    }
+                } catch(e) {
+                    console.error(`Nie udało się pobrać detali dla ${charName}:`, e);
+                }
+            }
+            detailedCharacters.push(displayChar);
+        }
+
+        // Czyścimy i renderujemy
         if (charListDetail) charListDetail.innerHTML = '';
+        
+        detailedCharacters.forEach(char => {
+             const charId = (char.imie || 'N/A').toUpperCase();
 
-        characters.forEach(char => {
-             const charName = char.imie || 'N/A';
-             const charId = (charName || 'N/A').toUpperCase();
-
-             // Używamy bezpiecznej struktury z dodatkowym <div> jako kontenerm, aby CSS nie 'połknął' tekstu.
              if (charListDetail) charListDetail.innerHTML += `
                 <div class="char-detail-item">
                     <a href="character_details.html?id=${charId}" class="char-box">
-                        <strong>${charName}</strong>
-                        Rola: ${char.rola_w_rozdziale || 'N/A'} <br>
-                        Status: ${char.status || 'N/A'}
+                        <strong>${char.imie}</strong>
+                        Rola: ${char.rola_w_rozdziale} <br>
+                        Status: ${char.status}
                     </a>
                 </div>
              `;
@@ -120,7 +163,7 @@ async function renderChapterDetails(data) {
          if (charListDetail) charListDetail.innerHTML = '<p>Brak zidentyfikowanych postaci.</p>';
     }
 
-    // --- 2. SEKCIJA SCEN (Renderowanie scen) ---
+    // --- 2. SEKCIJA SCEN (Bez zmian) ---
     const sceneListDetail = document.getElementById('scene-list-detail');
     const sceneCount = chapter.SCENES_COUNT || 0;
     
@@ -138,7 +181,6 @@ async function renderChapterDetails(data) {
             scenes.forEach(scene => {
                 const formattedDate = new Date(scene.DATA_DODANIA).toLocaleDateString('pl-PL');
 
-                // Ujednolicony format scen
                 if (sceneListDetail) sceneListDetail.innerHTML += `
                     <div class="scene-item">
                         <a href="scene_details.html?id=${scene.ID_ZDARZENIA}"><strong>${scene.TYTUL_SCENY || 'Scena Bez Tytułu'}</strong></a>
@@ -157,7 +199,7 @@ async function renderChapterDetails(data) {
     }
 
 
-    // --- 3. SEKCIJA ŚWIAT ---
+    // --- 3. SEKCIJA ŚWIAT (Bez zmian) ---
     const worldInfoDetail = document.getElementById('world-info-detail');
     const currentWorld = worldDetails?.latestDetails || {ID: chapter.WORLD_NAME || 'N/A', NAZWA: chapter.WORLD_NAME || 'N/A', OPIS: 'Brak detali w bazie.'};
 
@@ -168,7 +210,7 @@ async function renderChapterDetails(data) {
     `;
 }
 
-// Renderowanie detali postaci (Ewolucja)
+// Renderowanie detali postaci (Ewolucja) - bez zmian
 function renderCharacterDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     
@@ -227,6 +269,7 @@ function renderCharacterDetails(data) {
     if (content) content.innerHTML = html;
 }
 
+// Renderowanie detali świata (Ewolucja) - bez zmian
 function renderWorldDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     
@@ -293,7 +336,7 @@ export async function loadDetailsPage(id, type) {
     try {
         if (type === 'chapter') {
             const details = await fetchChapterDetails(id);
-            // Czekamy na zakończenie renderowania scen
+            // Czekamy na zakończenie renderowania (w tym asynchronicznego pobierania postaci)
             await renderChapterDetails(details); 
             
         } else if (type === 'character') {
