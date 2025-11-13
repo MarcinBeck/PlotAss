@@ -6,21 +6,18 @@ import { fetchDashboardData, DASHBOARD_API_ENDPOINT } from './utils.js';
 async function fetchChapterDetails(chapterId) {
     const data = await fetchDashboardData();
     
-    // Zabezpieczenie przed błędem: Sprawdzamy, czy data.chapters.latestChapters istnieje i jest tablicą.
     const latestChapters = data?.chapters?.latestChapters;
 
     if (!Array.isArray(latestChapters) || latestChapters.length === 0) { 
         throw new Error("Brak danych o rozdziałach w odpowiedzi API. Upewnij się, że DynamoDB zawiera zapisane rozdziały.");
     }
 
-    // Zbieramy najnowszą wersję rozdziału, która ma dane analityczne
     const chapter = latestChapters.find(c => c.CHAPTER_ID === chapterId);
     
     if (!chapter) {
         throw new Error(`Rozdział ${chapterId} nie znaleziony w bazie danych.`);
     }
     
-    // Pobieramy dane o świecie
     const worldNameKey = chapter.WORLD_NAME ? chapter.WORLD_NAME.toUpperCase() : null;
     let worldDetails = null;
     if (worldNameKey) {
@@ -64,7 +61,7 @@ function renderError(containerId, message) {
     }
 }
 
-// Renderowanie detali rozdziału (Nowy Layout - BEZ TREŚCI RAW)
+// Renderowanie detali rozdziału (Nowy Layout i dane analityczne)
 function renderChapterDetails(data) {
     const { chapter, worldDetails } = data;
     
@@ -75,29 +72,28 @@ function renderChapterDetails(data) {
     // Data dodania (pod nagłówkiem)
     document.getElementById('version-date').textContent = `Data dodania: ${new Date(chapter.VERSION_TIMESTAMP).toLocaleString('pl-PL')}`;
     
-    // Główna sekcja - Streszczenie
+    // Streszczenie
     document.getElementById('summary-text').textContent = chapter.SUMMARY || 'Brak szczegółowego streszczenia.';
 
     // Boczna sekcja: Postacie
     const charListDetail = document.getElementById('character-list-detail');
-    const characters = chapter.CHARACTERS || []; 
+    const characters = chapter.CHARACTERS_LIST || []; // Używamy CHARACTERS_LIST z backendu
+    
+    document.getElementById('char-count-display').textContent = characters.length;
     
     if (characters.length > 0) {
         charListDetail.innerHTML = '';
-        document.querySelector('#sidebar-analysis .sidebar-box:nth-child(1) h4').textContent = `Postacie (${characters.length})`;
 
         characters.forEach(char => {
-             // Jeśli CHARACTERS jest listą stringów, używamy tylko imienia. Jeśli obiektów, wyciągamy status/rolę.
              const charName = char.imie || char;
              const charId = (charName || 'N/A').toUpperCase();
 
              charListDetail.innerHTML += `
-                <div class="char-box">
+                <a href="character_details.html?id=${charId}" class="char-box">
                     <strong>${charName}</strong>
                     Rola: ${char.rola_w_rozdziale || 'N/A'} <br>
                     Status: ${char.status || 'N/A'}
-                    <a href="character_details.html?id=${charId}">Zobacz Detale Postaci &rarr;</a>
-                </div>
+                </a>
              `;
         });
     } else {
@@ -107,14 +103,24 @@ function renderChapterDetails(data) {
     // Boczna sekcja: Sceny
     const sceneListDetail = document.getElementById('scene-list-detail');
     const sceneCount = chapter.SCENES_COUNT || 0;
-    document.querySelector('#sidebar-analysis .sidebar-box:nth-child(2) h4').textContent = `Sceny (${sceneCount})`;
+    document.getElementById('scene-count-display').textContent = sceneCount;
     
     if (sceneCount > 0) {
-        sceneListDetail.innerHTML = `
-            <p><strong>${sceneCount}</strong> zidentyfikowanych scen. </p>
-            <p>Pełne detale sceny wymagają dedykowanego odczytu z tabeli LLM_PlotEvents.</p>
-            <p><a href="scenes.html">Przejdź do listy scen &rarr;</a></p>
-        `;
+        // Generowanie placeholderów dla scen
+        let sceneHtml = `<p><strong>${sceneCount}</strong> zidentyfikowanych scen:</p>`;
+
+        // Pokaż max 5 placeholderów
+        for(let i = 1; i <= Math.min(sceneCount, 5); i++) {
+             sceneHtml += `<div class="detail-item">
+                <a href="scene_details.html?id=SCENE-PLCHDR-${i}">Scena ${i}: (Tytuł/Opis Placeholder)</a>
+             </div>`;
+        }
+        if (sceneCount > 5) {
+            sceneHtml += `<p style="margin-top: 10px;">...i ${sceneCount - 5} więcej. <a href="scenes.html">Zobacz wszystkie &rarr;</a></p>`;
+        }
+        
+        sceneListDetail.innerHTML = sceneHtml;
+        
     } else {
          sceneListDetail.innerHTML = '<p>Brak zidentyfikowanych scen.</p>';
     }
@@ -124,9 +130,10 @@ function renderChapterDetails(data) {
     const worldInfoDetail = document.getElementById('world-info-detail');
     const currentWorld = worldDetails?.latestDetails || {ID: chapter.WORLD_NAME || 'N/A', NAZWA: chapter.WORLD_NAME || 'N/A', OPIS: 'Brak detali w bazie.'};
 
+    // Zmiana: Pełny opis, bez limitu znaków
     worldInfoDetail.innerHTML = `
         <p><strong>Węzeł:</strong> ${currentWorld.NAZWA}</p>
-        <p><strong>Opis:</strong> ${currentWorld.OPIS?.substring(0, 100) + '...' || 'Brak opisu.'}</p>
+        <p><strong>Opis:</strong> ${currentWorld.OPIS || 'Brak opisu.'}</p>
         <a href="world_details.html?id=${currentWorld.ID}">Zobacz Historię Węzła &rarr;</a>
     `;
 }
@@ -187,7 +194,6 @@ function renderCharacterDetails(data) {
     content.innerHTML = html;
 }
 
-// Renderowanie detali świata (Ewolucja)
 function renderWorldDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     document.getElementById('page-title').textContent = `Szczegóły Węzła: ${latestDetails.NAZWA}`;
@@ -260,7 +266,6 @@ export async function loadDetailsPage(id, type) {
         }
     } catch (error) {
         console.error(`Błąd ładowania detali ${type}:`, error);
-        // Błąd w rozdziale wyświetlamy w głównym gridzie
         if (type === 'chapter') {
              document.getElementById('chapter-details-grid').innerHTML = `<p style="color: red; padding: 20px;">BŁĄD: ${error.message}</p>`;
         } else {
