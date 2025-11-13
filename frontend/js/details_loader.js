@@ -37,10 +37,19 @@ async function fetchCharacterDetails(charId) {
     const response = await fetch(`${DASHBOARD_API_ENDPOINT}?charId=${charId}`, { method: 'GET' });
     const data = await response.json();
     if (!response.ok) {
-        // Rzucamy błąd, ale nie przerywamy procesu renderowania
         throw new Error(`BŁĄD API: ${data.error || 'Nieznany błąd.'}`);
     }
     return data;
+}
+
+// NOWA FUNKCJA: Pobieranie listy postaci dla danego rozdziału
+async function fetchChapterCharacters(chapterId) {
+    const response = await fetch(`${DASHBOARD_API_ENDPOINT}?chapterCharactersId=${chapterId}`, { method: 'GET' });
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(`BŁĄD API (Characters): ${data.error || 'Nieznany błąd.'}`);
+    }
+    return data.characters || [];
 }
 
 // Pobieranie detali świata (przez dedykowany endpoint)
@@ -92,82 +101,48 @@ async function renderChapterDetails(data) {
     const summaryText = document.getElementById('summary-text');
     if (summaryText) summaryText.textContent = chapter.SUMMARY || 'Brak szczegółowego streszczenia.';
 
-    // --- 1. SEKCIJA POSTACI (NOWA LOGIKA POBIERANIA Z LLM_Characters) ---
+    // --- 1. SEKCIJA POSTACI (NOWA LOGIKA: Pobieranie z getCharactersForChapter) ---
     const charListDetail = document.getElementById('character-list-detail');
     
-    // Priorytetowo używamy listy z pełnymi detalami z rozdziału (CHARACTERS_LIST).
-    // Jeśli pusta, używamy starego pola CHARACTERS (lista stringów).
-    let chapterCharacters = chapter.CHARACTERS_LIST || chapter.CHARACTERS || []; 
+    const charBoxTitle = document.querySelector('#sidebar-analysis .sidebar-box:nth-child(1) h4');
     
-    // Konwersja na jednolity format obiektów, jeśli to lista stringów
-    if (chapterCharacters.length > 0 && typeof chapterCharacters[0] === 'string') {
-        chapterCharacters = chapterCharacters.map(name => ({ imie: name }));
-    }
-
-    const charBoxTitle = document.querySelector('#analysis-sections-grid .analysis-box:nth-child(1) h4');
-    if (charBoxTitle) charBoxTitle.textContent = `Postacie (${chapterCharacters.length})`;
+    if (charListDetail) charListDetail.innerHTML = `<p class="loading-text">Ładowanie postaci...</p>`;
     
-    let detailedCharacters = [];
+    try {
+        const characters = await fetchChapterCharacters(chapterId); // Używamy nowej funkcji
+        
+        if (charBoxTitle) charBoxTitle.textContent = `Postacie (${characters.length})`;
+        if (charListDetail) charListDetail.innerHTML = '';
 
-    if (chapterCharacters.length > 0) {
-        if (charListDetail) charListDetail.innerHTML = `<p class="loading-text">Ładowanie ${chapterCharacters.length} postaci z LLM_Characters...</p>`;
+        if (characters.length > 0) {
+            characters.forEach(char => {
+                 const charName = char.IMIE || 'N/A';
+                 const charId = char.ID || (charName || 'N/A').toUpperCase();
 
-        // ITERACJA I POBIERANIE DETALI Z LLM_Characters
-        for (const char of chapterCharacters) {
-            const charName = char.imie || 'N/A';
-            const charId = (charName || 'N/A').toUpperCase();
-
-            let displayChar = { 
-                imie: charName,
-                rola_w_rozdziale: char.rola_w_rozdziale || 'N/A',
-                status: char.status || 'N/A'
-            };
-            
-            // Jeśli postać została zidentyfikowana (imie jest dostępne), pobieramy jej najnowszy status z LLM_Characters
-            if (charId !== 'N/A') {
-                try {
-                    const latestDetails = await fetchCharacterDetails(charId);
-                    if (latestDetails && latestDetails.latestDetails) {
-                        // Aktualizujemy status z najnowszego rekordu
-                        displayChar.status = latestDetails.latestDetails.SZCZEGOLY?.status || displayChar.status;
-                        
-                        // Oznaczamy rolę jako pobraną z rozdziału, jeśli była dostępna
-                        if (displayChar.rola_w_rozdziale === 'N/A') {
-                             displayChar.rola_w_rozdziale = 'N/A (Aktualne dane)';
-                        }
-                    }
-                } catch(e) {
-                    console.error(`Nie udało się pobrać detali dla ${charName}:`, e);
-                }
-            }
-            detailedCharacters.push(displayChar);
+                 if (charListDetail) charListDetail.innerHTML += `
+                    <div class="char-detail-item">
+                        <a href="character_details.html?id=${charId}" class="char-box">
+                            <strong>${charName}</strong>
+                            Rola: ${char.ROLA_W_ROZDZIALE || 'N/A'} <br>
+                            Status: ${char.STATUS || 'N/A'}
+                        </a>
+                    </div>
+                 `;
+            });
+        } else {
+             if (charListDetail) charListDetail.innerHTML = '<p>Brak zidentyfikowanych postaci.</p>';
         }
 
-        // Czyścimy i renderujemy
-        if (charListDetail) charListDetail.innerHTML = '';
-        
-        detailedCharacters.forEach(char => {
-             const charId = (char.imie || 'N/A').toUpperCase();
-
-             if (charListDetail) charListDetail.innerHTML += `
-                <div class="char-detail-item">
-                    <a href="character_details.html?id=${charId}" class="char-box">
-                        <strong>${char.imie}</strong>
-                        Rola: ${char.rola_w_rozdziale} <br>
-                        Status: ${char.status}
-                    </a>
-                </div>
-             `;
-        });
-    } else {
-         if (charListDetail) charListDetail.innerHTML = '<p>Brak zidentyfikowanych postaci.</p>';
+    } catch (error) {
+        if (charListDetail) charListDetail.innerHTML = `<p style="color: red;">BŁĄD POBIERANIA POSTACI: ${error.message}</p>`;
     }
 
-    // --- 2. SEKCIJA SCEN (Bez zmian) ---
+
+    // --- 2. SEKCIJA SCEN ---
     const sceneListDetail = document.getElementById('scene-list-detail');
     const sceneCount = chapter.SCENES_COUNT || 0;
     
-    const sceneBoxTitle = document.querySelector('#analysis-sections-grid .analysis-box:nth-child(2) h4');
+    const sceneBoxTitle = document.querySelector('#sidebar-analysis .sidebar-box:nth-child(2) h4');
     if (sceneBoxTitle) sceneBoxTitle.textContent = `Sceny (${sceneCount})`;
     
     if (sceneCount > 0) {
