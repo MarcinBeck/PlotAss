@@ -1,11 +1,15 @@
 version: 0.2
 phases:
   install:
+    # Upewnij się, że to jest wcięte dwa razy
     runtime-versions:
+      # Upewnij się, że to jest wcięte trzy razy
       nodejs: 20 
+    # Upewnij się, że to jest wcięte dwa razy
     commands:
-      # LINIJKA 7 (Commands[0]) MUSI MIEĆ HYFEN I ODPOWIEDNIE WCĘCIE
+      # Linia 7: Dwie spacje przed myślnikiem, spacja po myślniku
       - echo "Instalacja: Node.js" 
+      # Linia 8: Dwie spacje przed myślnikiem, spacja po myślniku
       - pip install aws-sam-cli 
   
   build:
