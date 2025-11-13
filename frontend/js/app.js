@@ -1,3 +1,9 @@
+// Plik: frontend/js/app.js (LOGIKA AUTO-SAVE I DETALE POSTACI)
+
+// ====================================================================
+// PAMIĘTAJ: Wklej swoje adresy URL z API Gateway!
+// ====================================================================
+
 // DashboardDataResolver (GET - Ładowanie statystyk i detale postaci)
 const DASHBOARD_API_ENDPOINT = 'https://kggk7qj2bk.execute-api.eu-north-1.amazonaws.com/FINAL_SUCCESS/DashboardDataResolver'; 
 // ChapterManager (POST - Dodawanie rozdziału, wywoływanie analizy)
@@ -211,6 +217,7 @@ async function autoSaveAllSections(payload) {
 
 
     try {
+        // WYKONANIE GŁÓWNEGO ZAPISU DO LAMBDA
         const response = await fetch(CHAPTER_MANAGER_ENDPOINT, {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
@@ -237,7 +244,12 @@ async function autoSaveAllSections(payload) {
 
         const globalErrorResults = {};
         for (const key of Object.keys(statusMap)) {
-            globalErrorResults[key] = { success: false, error: 'Krytyczny błąd połączenia/API.' };
+            // W przypadku błędu z Lambda (500), musimy ręcznie zgrupować błędy
+            if (error.message.includes('BŁĄD BACKENDU') && error.message.includes('ValidationException')) {
+                 globalErrorResults[key] = { success: false, error: 'Błąd Danych w DynamoDB.' };
+            } else {
+                 globalErrorResults[key] = { success: false, error: 'Krytyczny błąd połączenia/API.' };
+            }
         }
         updateReviewStatusIndicators(globalErrorResults);
         
