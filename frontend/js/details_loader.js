@@ -1,20 +1,34 @@
-import { fetchDashboardData } from './utils.js';
+import { fetchDashboardData, DASHBOARD_API_ENDPOINT } from './utils.js';
 
 // === FUNKCJE API DLA DETALI ===
+
+// Pobieranie detali rozdziału (przez skanowanie dashboardu)
 async function fetchChapterDetails(chapterId) {
-    // Uwaga: Detale Rozdziału nie mają dedykowanego endpointu GET, 
-    // więc na razie pobierzemy wszystkie, a następnie znajdziemy ten konkretny rozdział.
-    // W przyszłości zalecane jest dodanie dedykowanego endpointu GET /ChapterManager?id=...
     const data = await fetchDashboardData();
-    const chapter = data.chapters.lastUpdates.find(c => c.CHAPTER_ID === chapterId) || 
-                    data.chapters.latestChapters.find(c => c.CHAPTER_ID === chapterId);
+    
+    // Zbieramy najnowszą wersję rozdziału, która ma dane analityczne
+    const chapter = data.chapters.latestChapters.find(c => c.CHAPTER_ID === chapterId);
     
     if (!chapter) {
         throw new Error(`Rozdział ${chapterId} nie znaleziony.`);
     }
-    return chapter;
+    
+    // Pobieramy dane o świecie, aby móc wyświetlić aktualny opis
+    const worldNameKey = chapter.WORLD_NAME ? chapter.WORLD_NAME.toUpperCase() : null;
+    let worldDetails = null;
+    if (worldNameKey) {
+         try {
+             // Używamy dedykowanej funkcji do pobrania detali świata
+             worldDetails = await fetchWorldDetails(worldNameKey); 
+         } catch(e) {
+             console.warn(`Nie udało się pobrać pełnych detali świata ${worldNameKey}.`, e);
+         }
+    }
+
+    return { chapter, worldDetails };
 }
 
+// Pobieranie detali postaci (przez dedykowany endpoint)
 async function fetchCharacterDetails(charId) {
     const response = await fetch(`${DASHBOARD_API_ENDPOINT}?charId=${charId}`, { method: 'GET' });
     const data = await response.json();
@@ -24,6 +38,7 @@ async function fetchCharacterDetails(charId) {
     return data;
 }
 
+// Pobieranie detali świata (przez dedykowany endpoint)
 async function fetchWorldDetails(worldId) {
     const response = await fetch(`${DASHBOARD_API_ENDPOINT}?worldId=${worldId}`, { method: 'GET' });
     const data = await response.json();
@@ -43,40 +58,92 @@ function renderError(containerId, message) {
     }
 }
 
-function renderChapterDetails(details) {
-    document.getElementById('page-title').textContent = `Szczegóły Rozdziału: ${details.TITLE}`;
-    const content = document.getElementById('chapter-details-content');
+// Renderowanie detali rozdziału (Nowy Layout)
+function renderChapterDetails(data) {
+    const { chapter, worldDetails } = data;
     
-    // Proste renderowanie podstawowych detali rozdziału
-    content.innerHTML = `
-        <h3>Informacje Podstawowe</h3>
-        <p><strong>ID Wersji:</strong> <code>${details.VERSION_TIMESTAMP}</code></p>
-        <p><strong>Status:</strong> <span class="status-tag status-new">${details.STATUS || 'ANALYZED'}</span></p>
-        <p><strong>Liczba znaków:</strong> ${(details.CONTENT?.length / 1000).toFixed(1)}k</p>
-        <p><strong>Streszczenie:</strong> ${details.SUMMARY || 'Brak podsumowania.'}</p>
-        
-        <h3>Treść Rozdziału (Fragment)</h3>
-        <pre style="white-space: pre-wrap; background: #f0f0f0; padding: 15px; border-radius: 4px;">${details.CONTENT?.substring(0, 500) + '...' || 'Brak treści.'}</pre>
+    const chapterNumber = chapter.CHAPTER_ID.replace('CH-', '');
+    document.getElementById('page-title').textContent = `${chapterNumber}: ${chapter.TITLE}`;
+    document.getElementById('edit-link').href = `chapter_add.html?step=1&id=${chapter.CHAPTER_ID}`;
+    
+    // Data dodania
+    document.getElementById('version-date').textContent = `Data dodania: ${new Date(chapter.VERSION_TIMESTAMP).toLocaleString('pl-PL')}`;
+    
+    // Główna sekcja
+    document.getElementById('summary-text').textContent = chapter.SUMMARY || 'Brak szczegółowego streszczenia.';
+    document.getElementById('raw-content-fragment').textContent = chapter.CONTENT?.substring(0, 500) + '...' || 'Brak treści.';
+
+    // Boczna sekcja: Postacie
+    const charListDetail = document.getElementById('character-list-detail');
+    const characters = chapter.CHARACTERS || []; // Zakładamy, że to jest pełny lista obiektów postaci
+    
+    if (characters.length > 0) {
+        charListDetail.innerHTML = '';
+        document.querySelector('.sidebar-box:nth-child(1) h4').textContent = `Postacie (${characters.length})`;
+
+        characters.forEach(char => {
+             const charId = (char.imie || 'N/A').toUpperCase();
+
+             charListDetail.innerHTML += `
+                <div class="char-box">
+                    <strong>${char.imie || 'Nieznane Imię'}</strong>
+                    Rola: ${char.rola_w_rozdziale || 'N/A'} <br>
+                    Status: ${char.status || 'N/A'}
+                    <a href="character_details.html?id=${charId}">Zobacz Detale Postaci &rarr;</a>
+                </div>
+             `;
+        });
+    } else {
+         charListDetail.innerHTML = '<p>Brak zidentyfikowanych postaci.</p>';
+    }
+
+    // Boczna sekcja: Sceny
+    const sceneListDetail = document.getElementById('scene-list-detail');
+    const sceneCount = chapter.SCENES_COUNT || 0;
+    document.querySelector('.sidebar-box:nth-child(2) h4').textContent = `Sceny (${sceneCount})`;
+    
+    // Jeśli znasz JSON scen:
+    // const scenes = chapter.SCENES_DATA || [];
+    // if (scenes.length > 0) { ... }
+    
+    if (sceneCount > 0) {
+        sceneListDetail.innerHTML = `
+            <p><strong>${sceneCount}</strong> zidentyfikowanych scen. </p>
+            <p>Pełne detale sceny wymagają dedykowanego odczytu z tabeli LLM_PlotEvents.</p>
+            <p><a href="scenes.html">Przejdź do listy scen &rarr;</a></p>
+        `;
+    } else {
+         sceneListDetail.innerHTML = '<p>Brak zidentyfikowanych scen.</p>';
+    }
+
+
+    // Boczna sekcja: Świat
+    const worldInfoDetail = document.getElementById('world-info-detail');
+    const currentWorld = worldDetails?.latestDetails || {NAZWA: chapter.WORLD_NAME || 'N/A', OPIS: 'Brak detali w bazie.'};
+
+    worldInfoDetail.innerHTML = `
+        <p><strong>Węzeł:</strong> ${currentWorld.NAZWA}</p>
+        <p><strong>Opis:</strong> ${currentWorld.OPIS?.substring(0, 100) + '...' || 'Brak opisu.'}</p>
+        <a href="world_details.html?id=${currentWorld.ID || chapter.WORLD_NAME || 'N/A'}">Zobacz Historię Węzła &rarr;</a>
     `;
 }
 
+// Renderowanie detali postaci (Ewolucja)
 function renderCharacterDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     document.getElementById('page-title').textContent = `Szczegóły Postaci: ${latestDetails.IMIE}`;
     const content = document.getElementById('character-details-content');
     
-    // Renderowanie głowy rekordu
     let html = `
         <h3>Główne Dane Postaci</h3>
         <p><strong>Imię:</strong> ${latestDetails.IMIE}</p>
         <p><strong>Ostatni Status:</strong> ${latestDetails.SZCZEGOLY?.status || 'N/A'}</p>
         <p><strong>Typ:</strong> ${latestDetails.SZCZEGOLY?.typ || 'N/A'}</p>
-        <p><strong>Data Stworzenia:</strong> ${new Date(latestDetails.DATA_DODANIA).toLocaleString('pl-PL')}</p>
+        <p><strong>Data Ost. Zmiany:</strong> ${new Date(latestDetails.DATA_DODANIA).toLocaleString('pl-PL')}</p>
         
         <h3>Ewolucja i Historia w Rozdziałach</h3>
     `;
     
-    // Sortujemy rozdziały malejąco (najnowszy numer rozdziału na górze)
     chaptersHistory.sort((a, b) => {
         const numA = parseInt(a.chapterId.replace('CH-', ''));
         const numB = parseInt(b.chapterId.replace('CH-', ''));
@@ -92,7 +159,6 @@ function renderCharacterDetails(data) {
             </summary>
             <ul class="version-list" style="list-style: none; padding-left: 0;">`;
         
-        // Sortujemy wersje w ramach Rozdziału (Data i Detale) - malejąco
         chapter.versions.sort((a, b) => new Date(b.versionTimestamp) - new Date(a.versionTimestamp)).forEach(version => {
             const formattedDate = new Date(version.versionTimestamp).toLocaleString('pl-PL');
             
@@ -118,6 +184,7 @@ function renderCharacterDetails(data) {
     content.innerHTML = html;
 }
 
+// Renderowanie detali świata (Ewolucja)
 function renderWorldDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     document.getElementById('page-title').textContent = `Szczegóły Węzła: ${latestDetails.NAZWA}`;
@@ -132,7 +199,6 @@ function renderWorldDetails(data) {
         <h3>Historia Opisów Węzła w Rozdziałach</h3>
     `;
     
-    // Sortujemy rozdziały malejąco
     chaptersHistory.sort((a, b) => {
         const numA = parseInt(a.chapterId.replace('CH-', ''));
         const numB = parseInt(b.chapterId.replace('CH-', ''));
@@ -148,7 +214,6 @@ function renderWorldDetails(data) {
             </summary>
             <ul class="version-list" style="list-style: none; padding-left: 0;">`;
         
-        // Sortujemy wersje w ramach Rozdziału (Data i Detale) - malejąco
         chapter.versions.sort((a, b) => new Date(b.versionTimestamp) - new Date(a.versionTimestamp)).forEach(version => {
             const formattedDate = new Date(version.versionTimestamp).toLocaleString('pl-PL');
             
@@ -175,6 +240,7 @@ function renderWorldDetails(data) {
 // === FUNKCJA GŁÓWNA LOADERA ===
 export async function loadDetailsPage(id, type) {
     document.getElementById('page-title').textContent = `Ładowanie szczegółów ${type}...`;
+    const contentContainerId = `${type}-details-content`;
 
     try {
         if (type === 'chapter') {
@@ -187,10 +253,10 @@ export async function loadDetailsPage(id, type) {
             const details = await fetchWorldDetails(id);
             renderWorldDetails(details);
         } else {
-             renderError(`${type}-details-content`, 'Nieznany typ detali.');
+             renderError(contentContainerId, 'Nieznany typ detali.');
         }
     } catch (error) {
         console.error(`Błąd ładowania detali ${type}:`, error);
-        renderError(`${type}-details-content`, error.message);
+        renderError(contentContainerId, error.message);
     }
 }
