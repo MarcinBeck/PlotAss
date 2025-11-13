@@ -3,7 +3,7 @@ export const DASHBOARD_API_ENDPOINT = 'https://kggk7qj2bk.execute-api.eu-north-1
 export const CHAPTER_MANAGER_ENDPOINT = 'https://hdhzbujrg3tgyc64wdnseswqxi0lhgci.lambda-url.eu-north-1.on.aws/'; 
 
 // === FUNKCJE POMOCNICZE ===
-
+ 
 export function updateStatusMessage(message, type = 'info') {
     const alertDiv = document.getElementById('status-alert');
     if (!alertDiv) return;
