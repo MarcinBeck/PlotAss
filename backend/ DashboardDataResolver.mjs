@@ -8,7 +8,7 @@ const db = DynamoDBDocumentClient.from(client);
 const CHAPTERS_TABLE = 'LLM_Chapters_V2';
 const CHARACTERS_TABLE = 'LLM_Characters';
 const WORLDS_TABLE = 'LLM_Worlds';
-const PLOT_EVENTS_TABLE = 'LLM_PlotEvents'; // Tabela zdarzeń fabularnych
+const PLOT_EVENTS_TABLE = 'LLM_PlotEvents'; 
 
 const headers = { 
     "Content-Type": "application/json",
@@ -17,24 +17,14 @@ const headers = {
     'Access-Control-Allow-Headers': 'Content-Type'
 };
 
-// === FUNKCJE POMOCNICZE (Detale) ===
-
+// ... (getCharacterDetails i getWorldDetails bez zmian) ...
 const getCharacterDetails = async (charId) => {
-    const params = {
-        TableName: CHARACTERS_TABLE,
-        Key: { "ID": charId } 
-    };
-
+    const params = { TableName: CHARACTERS_TABLE, Key: { "ID": charId } };
     const queryResult = await db.send(new GetCommand(params));
     const mainRecord = queryResult.Item; 
-
-    if (!mainRecord) {
-        return null;
-    }
-
+    if (!mainRecord) { return null; }
     const chaptersMap = mainRecord.HISTORIA_ROZDZIALOW || {};
     const chaptersList = [];
-
     for (const chapterNumber in chaptersMap) {
         if (chaptersMap.hasOwnProperty(chapterNumber)) {
             chaptersList.push({
@@ -42,67 +32,37 @@ const getCharacterDetails = async (charId) => {
                 versions: chaptersMap[chapterNumber].map(version => ({
                     versionTimestamp: version.DATA_WPROWADZENIA,
                     rola_w_rozdziale: version.ROLA_W_ROZDZIALE || 'N/A',
-                    szczegoly: {
-                        status: version.STATUS || 'N/A', 
-                        typ: version.TYP || 'N/A'
-                    }
+                    szczegoly: { status: version.STATUS || 'N/A', typ: version.TYP || 'N/A' }
                 }))
             });
         }
     }
-
-    return {
-        latestDetails: mainRecord, 
-        chaptersHistory: chaptersList
-    };
+    return { latestDetails: mainRecord, chaptersHistory: chaptersList };
 };
 
 const getWorldDetails = async (worldId) => {
-    const params = {
-        TableName: WORLDS_TABLE,
-        Key: { "ID": worldId } 
-    };
-
+    const params = { TableName: WORLDS_TABLE, Key: { "ID": worldId } };
     const queryResult = await db.send(new GetCommand(params));
     const mainRecord = queryResult.Item; 
-
-    if (!mainRecord) {
-        return null;
-    }
-
+    if (!mainRecord) { return null; }
     const historyList = mainRecord.HISTORIA_ROZDZIALOW || [];
     const chaptersMap = {};
-
     historyList.forEach(version => {
         const chapterId = version.SOURCE_CHAPTER_ID;
-        
-        if (!chaptersMap[chapterId]) {
-            chaptersMap[chapterId] = {
-                chapterId: chapterId,
-                versions: []
-            };
-        }
-
+        if (!chaptersMap[chapterId]) { chaptersMap[chapterId] = { chapterId: chapterId, versions: [] }; }
         chaptersMap[chapterId].versions.push({
             versionTimestamp: version.DATA_WPROWADZENIA,
             opis: version.OPIS, 
             rozdział_numer: version.ROZDZIAL_NUMER
         });
     });
-
     const chaptersList = Object.values(chaptersMap);
-
-    return {
-        latestDetails: mainRecord, 
-        chaptersHistory: chaptersList
-    };
+    return { latestDetails: mainRecord, chaptersHistory: chaptersList };
 };
 
 
-// NOWA FUNKCJA: Pobieranie scen po ID rozdziału
+// POPRAWIONA FUNKCJA: Pobieranie scen po ID rozdziału z sortowaniem numerycznym
 const getSceneDetails = async (chapterId) => {
-    // UWAGA: Używamy ScanCommand z filtrem, co jest wolne i drogie, 
-    // ale działa na istniejącym schemacie LLM_PlotEvents bez GSI.
     const params = {
         TableName: PLOT_EVENTS_TABLE,
         FilterExpression: "SOURCE_CHAPTER_ID = :chapterId",
@@ -113,15 +73,18 @@ const getSceneDetails = async (chapterId) => {
     
     const scanResult = await db.send(new ScanCommand(params));
     
-    // Sortujemy sceny chronologicznie według numeru rozdziału (lub daty)
-    // Zakładamy, że ROZDZIAL_NUMER zapewnia chronologię w danym rozdziale.
-    const sortedScenes = (scanResult.Items || []).sort((a, b) => (a.ROZDZIAL_NUMER || 0) - (b.ROZDZIAL_NUMER || 0));
+    // Użycie localeCompare z opcją numeric: true do sortowania stringów z liczbami (np. 2.1, 2.2)
+    const sortedScenes = (scanResult.Items || []).sort((a, b) => {
+        const idA = a.ID_ZDARZENIA || '';
+        const idB = b.ID_ZDARZENIA || '';
+        return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: 'base' });
+    });
 
     return sortedScenes;
 };
 
 
-// === GŁÓWNY HANDLER LAMBDY ===
+// === GŁÓWNY HANDLER LAMBDY (Logika bez zmian) ===
 
 export const handler = async (event) => {
     
@@ -130,7 +93,7 @@ export const handler = async (event) => {
     try {
         const charId = event.queryStringParameters?.charId;
         const worldId = event.queryStringParameters?.worldId;
-        const chapterScenesId = event.queryStringParameters?.chapterScenesId; // NOWY PARAMETR
+        const chapterScenesId = event.queryStringParameters?.chapterScenesId;
         
         // --- Obsługa Detali Postaci/Świata/Scen ---
         if (charId) {
@@ -145,16 +108,14 @@ export const handler = async (event) => {
             return { statusCode: 200, headers, body: JSON.stringify(details) };
         }
         
-        // NOWA OBSŁUGA SCEN
         if (chapterScenesId) {
             const scenes = await getSceneDetails(chapterScenesId);
             return { statusCode: 200, headers, body: JSON.stringify({ scenes }) };
         }
 
 
-        // --- Standardowy Dashboard Scan ---
+        // --- Standardowy Dashboard Scan (dla dashboard.html i list) ---
         
-        // 1. POBIERANIE DANYCH ROZDZIAŁÓW
         const chapterScan = await db.send(new ScanCommand({
             TableName: CHAPTERS_TABLE,
             ProjectionExpression: "CHAPTER_ID, #T, VERSION_TIMESTAMP, #S, CONTENT, SUMMARY, CHARACTERS_LIST, WORLD_NAME, SCENES_COUNT", 
@@ -168,14 +129,13 @@ export const handler = async (event) => {
             let totalCharacters = 0;
 
             items.forEach(item => {
-                totalCharacters += item.CONTENT ? item.CONTENT.length : 0; // Używamy Content do statystyki
+                totalCharacters += item.CONTENT ? item.CONTENT.length : 0;
                 const id = item.CHAPTER_ID;
                 const timestamp = new Date(item.VERSION_TIMESTAMP).getTime();
 
                 if (!latestVersions[id] || timestamp > new Date(latestVersions[id].VERSION_TIMESTAMP).getTime()) {
                     latestVersions[id] = {
                         ...item,
-                        // Eksportujemy pola analityczne
                         CHARACTERS_LIST: item.CHARACTERS_LIST || [],
                         SCENES_COUNT: item.SCENES_COUNT || 0,
                         WORLD_NAME: item.WORLD_NAME
@@ -192,12 +152,10 @@ export const handler = async (event) => {
         const { latestChapters, totalCharacters } = processChapterData(allVersions);
 
         
-        // 2. POBIERANIE DANYCH POSTACI
         const characterScan = await db.send(new ScanCommand({ TableName: CHARACTERS_TABLE }));
         const latestCharactersList = characterScan.Items || []; 
         const totalCharactersCount = latestCharactersList.length;
         
-        // 3. POBIERANIE DANYCH ŚWIATÓW
         const worldScan = await db.send(new ScanCommand({
             TableName: WORLDS_TABLE,
             ProjectionExpression: "ID, NAZWA, DATA_DODANIA" 
@@ -206,7 +164,6 @@ export const handler = async (event) => {
         const totalWorldsCount = latestWorldsList.length;
 
 
-        // 4. ZWRACANIE ZBIORCZEGO WIDOKU
         return {
             statusCode: 200,
             headers,
@@ -215,7 +172,7 @@ export const handler = async (event) => {
                     count: latestChapters.length,
                     totalCharacters: totalCharacters,
                     lastUpdates: latestChapters.slice(0, 4),
-                    latestChapters: latestChapters // KLUCZOWY EKSPORT DLA details_loader
+                    latestChapters: latestChapters
                 },
                 characters: {
                     count: totalCharactersCount,
