@@ -200,12 +200,19 @@ h1 { margin: 0; font-size: 24px; }
     margin-top: 30px; 
 }
 
+/* ZMIANA 1: Usuwamy ramki i cień z głównych boksów (Postacie, Sceny). Zostawiamy padding. */
 .sidebar-box {
     padding: 15px;
-    border: 1px solid #ddd;
+    border: none;
     border-radius: 8px;
+    box-shadow: none;
+}
+/* ZMIANA 2: Przywracamy ramkę i cień tylko dla ostatniego boksu (Świat/Węzeł) */
+#sidebar-analysis .sidebar-box:last-child {
+    border: 1px solid #ddd;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
+
 
 .sidebar-box h4 {
     color: #007bff;
@@ -239,16 +246,24 @@ h1 { margin: 0; font-size: 24px; }
     margin: 0;
 }
 
-/* Styl dla pojedynczego elementu w listach (scena/postać) */
+/* ZMIANA 3: Styl dla pojedynczego elementu w listach (scena/postać) */
 .scene-item, .char-detail-item {
-    padding: 10px 0;
-    border-bottom: 1px dashed #ccc; 
+    /* NOWE STYLE DLA RAMKI I CIENIA */
+    padding: 12px; /* Zwiększony padding */
+    margin-bottom: 12px; /* Odstęp między elementami */
+    border: 1px solid #eee; /* Delikatna ramka */
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); /* Delikatny cień */
+    background-color: #ffffff; /* Białe tło */
+    
     font-size: 0.95em;
     line-height: 1.3; 
+    border-bottom: none !important; /* Usunięcie domyślnej przerywanej linii */
 }
 
 .scene-item:last-child, .char-detail-item:last-child {
     border-bottom: none; 
+    margin-bottom: 0; 
 }
 
 /* Styl dla boksu postaci (link) */
