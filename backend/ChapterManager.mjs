@@ -1,7 +1,7 @@
-// Plik: index.mjs (ChapterManager - LOGIKA GRANULARNEGO ZAPISU SEKCJI)
+// Plik: index.mjs (ChapterManager - Finalna Wersja - Uproszczony schemat postaci i świata)
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
 // Klienci AWS
 const client = new DynamoDBClient({});
@@ -18,27 +18,21 @@ const VERSION_ID = 'VERSION_TIMESTAMP';
 
 
 // =======================================================
-// FUNKCJA POMOCNICZA: CZYŚCI ID (USUNIĘTO TEMP_)
+// FUNKCJA POMOCNICZA: CZYŚCI ID (Partition Key)
 // =======================================================
 
-// Tworzy stabilny klucz Partycjonujący z imienia, bez prefiksu TEMP_
 const cleanCharId = (name) => {
     if (typeof name !== 'string' || name.length === 0) return null;
     
-    // Usuwamy znaki inne niż litery, cyfry i polskie znaki
     const safeName = name.replace(/[^A-Za-z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, ''); 
     
-    // Jeśli po usunięciu zostało puste imię lub jest za krótkie na sensowny klucz
     if (safeName.length < 2) return null; 
-    
-    // Używamy bezpośrednio nazwy (wielkie litery) jako klucza partycjonującego
     return safeName.toUpperCase(); 
 };
 
 
 // =======================================================
 // KROK 1: Zapis Surowego Rozdziału (Raw Save)
-// ... (logika bez zmian) ...
 // =======================================================
 
 const saveRawChapter = async (dbClient, chapterId, title, content) => {
@@ -68,7 +62,7 @@ const saveRawChapter = async (dbClient, chapterId, title, content) => {
 
 const processSectionUpdate = async (dbClient, chapterId, chapterNumber, currentTimestamp, rawTimestamp, sectionData, sectionType) => {
     
-    // 0. Pobranie RAW CONTENT (potrzebne do finalnego zapisu rozdziału)
+    // 0. Pobranie RAW CONTENT
     const { Item: rawChapter } = await dbClient.send(new GetCommand({
         TableName: CHAPTERS_TABLE,
         Key: { 
@@ -83,8 +77,9 @@ const processSectionUpdate = async (dbClient, chapterId, chapterNumber, currentT
 
     switch (sectionType) {
         case 'CHARACTERS':
-            const identifiedCharactersPromises = (sectionData.postacie || [])
-                .map(obj => {
+            
+            const validUpdatePromises = (sectionData.postacie || [])
+                .map((obj) => {
                     const charId = cleanCharId(obj.imie);
                     
                     if (!charId) { 
@@ -92,43 +87,120 @@ const processSectionUpdate = async (dbClient, chapterId, chapterNumber, currentT
                         return null; 
                     }
                     
-                    const characterEvolutionEntry = {
-                        ID: charId, // Partition Key (bez TEMP_)
-                        SOURCE_VERSION: `${chapterId}#${currentTimestamp}`, // Sort Key
-                        IMIE: obj.imie,
-                        ROZDZIAL_NUMER: chapterNumber,
-                        SOURCE_CHAPTER_ID: chapterId,
-                        ROLA_W_ROZDZIALE: obj.rola_w_rozdziale,
-                        SZCZEGOLY: obj, 
-                        DATA_DODANIA: currentTimestamp
-                    };
-                    return dbClient.send(new PutCommand({ TableName: CHARACTERS_TABLE, Item: characterEvolutionEntry }));
+                    return (async () => {
+                        
+                        // --- WSPÓLNE DANE DLA HISTORII ---
+                        const historyEntry = {
+                            DATA_WPROWADZENIA: currentTimestamp,
+                            ROLA_W_ROZDZIALE: obj.rola_w_rozdziale,
+                            STATUS: obj.status, 
+                            TYP: obj.typ,
+                            SOURCE_CHAPTER_ID: chapterId
+                        };
+                        
+                        const chapterKey = chapterNumber.toString();
+                        
+                        // 1. SPRAWDŹ ISTNIENIE REKORDU
+                        const { Item: existingItem } = await dbClient.send(new GetCommand({ TableName: CHARACTERS_TABLE, Key: { ID: charId } }));
+                        
+                        if (!existingItem) {
+                            // CASE 1: NOWY REKORD -> Użyj PutCommand
+                            const initialItem = {
+                                ID: charId,
+                                IMIE: obj.imie,
+                                DATA_DODANIA: currentTimestamp,
+                                SZCZEGOLY: { status: obj.status, typ: obj.typ },
+                                HISTORIA_ROZDZIALOW: { [chapterKey]: [historyEntry] } // Inicjujemy Mapę z pierwszą Listą
+                            };
+                            await dbClient.send(new PutCommand({ TableName: CHARACTERS_TABLE, Item: initialItem }));
+                        
+                        } else {
+                            // CASE 2: ISTNIEJĄCY REKORD -> Użyj UpdateCommand
+                            const updateParams = {
+                                TableName: CHARACTERS_TABLE,
+                                Key: { ID: charId },
+                                UpdateExpression: 'SET IMIE = :imie, DATA_DODANIA = :data, SZCZEGOLY = :szczegoly, #historyMap.#chapNum = list_append(if_not_exists(#historyMap.#chapNum, :emptyList), :newEntry)',
+                                ExpressionAttributeNames: {
+                                    '#historyMap': 'HISTORIA_ROZDZIALOW',
+                                    '#chapNum': chapterKey
+                                },
+                                ExpressionAttributeValues: {
+                                    ':imie': obj.imie,
+                                    ':data': currentTimestamp,
+                                    ':szczegoly': { status: obj.status, typ: obj.typ },
+                                    ':newEntry': [historyEntry],
+                                    ':emptyList': []
+                                }
+                            };
+                            await dbClient.send(new UpdateCommand(updateParams));
+                        }
+
+                        return charId; 
+                    })().catch(e => {
+                         console.error(`BŁĄD ZAPISU POSTACI ${charId}: ${e.message}`, e);
+                         throw e;
+                    });
                 })
                 .filter(p => p !== null); 
 
-            await Promise.all(identifiedCharactersPromises);
-            console.log(`Zapisano ${identifiedCharactersPromises.length} rekordów postaci.`);
-            break;
+            await Promise.all(validUpdatePromises);
+
+            console.log(`Zapisano/Zaktualizowano ${validUpdatePromises.length} rekordów postaci.`);
+            return { status: 'SAVED', sectionType, count: validUpdatePromises.length };
 
         case 'WORLD':
             const worldData = sectionData.swiat;
             if (worldData && worldData.nazwa) {
-                const worldEntry = {
-                    ID: worldData.nazwa, 
-                    SOURCE_VERSION: `${chapterId}#${currentTimestamp}`, 
+                const worldName = worldData.nazwa.toUpperCase(); // Klucz partycjonujący
+                
+                // --- WPIS HISTORYCZNY DLA ŚWIATA ---
+                const worldHistoryEntry = {
+                    DATA_WPROWADZENIA: currentTimestamp,
                     ROZDZIAL_NUMER: chapterNumber,
-                    OPIS: worldData.opis,
                     SOURCE_CHAPTER_ID: chapterId,
-                    DATA_DODANIA: currentTimestamp
+                    OPIS: worldData.opis // Pełny opis świata
                 };
-                await dbClient.send(new PutCommand({ TableName: WORLDS_TABLE, Item: worldEntry }));
-                console.log(`Zapisano opis świata: ${worldData.nazwa}.`);
+
+                // 1. SPRAWDŹ ISTNIENIE REKORDU
+                const { Item: existingItem } = await dbClient.send(new GetCommand({ TableName: WORLDS_TABLE, Key: { ID: worldName } }));
+                
+                if (!existingItem) {
+                    // CASE 1: NOWY REKORD ŚWIATA
+                    const initialItem = {
+                        ID: worldName,
+                        NAZWA: worldData.nazwa,
+                        DATA_DODANIA: currentTimestamp,
+                        OPIS: worldData.opis, // Najnowszy opis na najwyższym poziomie
+                        HISTORIA_ROZDZIALOW: [worldHistoryEntry] // Inicjujemy Listę Historii
+                    };
+                    await dbClient.send(new PutCommand({ TableName: WORLDS_TABLE, Item: initialItem }));
+
+                } else {
+                    // CASE 2: ISTNIEJĄCY REKORD ŚWIATA
+                    const updateParams = {
+                        TableName: WORLDS_TABLE,
+                        Key: { ID: worldName },
+                        // Aktualizujemy główny opis, datę i dodajemy do listy historii
+                        UpdateExpression: 'SET OPIS = :opis, DATA_DODANIA = :data, NAZWA = :nazwa, HISTORIA_ROZDZIALOW = list_append(if_not_exists(HISTORIA_ROZDZIALOW, :emptyList), :newEntry)',
+                        ExpressionAttributeValues: {
+                            ':opis': worldData.opis,
+                            ':data': currentTimestamp,
+                            ':nazwa': worldData.nazwa,
+                            ':newEntry': [worldHistoryEntry],
+                            ':emptyList': []
+                        }
+                    };
+                    await dbClient.send(new UpdateCommand(updateParams));
+                }
+                
+                console.log(`Zapisano/Zaktualizowano opis świata: ${worldData.nazwa}.`);
+                return { status: 'SAVED', sectionType, name: worldData.nazwa };
             } else {
                  throw new Error('Brak wymaganych danych w sekcji ŚWIAT.');
             }
-            break;
 
         case 'SCENES':
+            // ... (Logika bez zmian) ...
             const plotEventsPromises = (sectionData.sceny || []).map(scene => {
                 const sceneId = `${chapterId}-${scene.numer}`;
                 const plotEvent = {
@@ -144,10 +216,10 @@ const processSectionUpdate = async (dbClient, chapterId, chapterNumber, currentT
             });
             await Promise.all(plotEventsPromises);
             console.log(`Zapisano ${plotEventsPromises.length} scen/zdarzeń.`);
-            break;
+            return { status: 'SAVED', sectionType, count: plotEventsPromises.length };
             
         case 'SUMMARY':
-            // Finalne uaktualnienie rozdziału po pomyślnych zapisach sekcji (dla dashboardu)
+            // ... (Logika bez zmian) ...
             if (!sectionData.summary || !sectionData.title) {
                  throw new Error('Brak wymaganych danych w sekcji SUMMARY (summary/title).');
             }
@@ -163,28 +235,86 @@ const processSectionUpdate = async (dbClient, chapterId, chapterNumber, currentT
                 SCENES_COUNT: sectionData.sceny_count || 0,
                 WORLD_NAME: sectionData.world_name || 'N/A',
                 CHARACTERS_COUNT: sectionData.characters_count || 0,
-                CHARACTERS: sectionData.characters_list // Lista imion
+                CHARACTERS: sectionData.characters_list
             };
             await dbClient.send(new PutCommand({ TableName: CHAPTERS_TABLE, Item: chapterItem }));
             console.log(`Zaktualizowano LLM_Chapters_V2 (SUMMARY).`);
-            break;
+            return { status: 'SAVED', sectionType };
             
         default:
             throw new Error(`Nieznany typ sekcji: ${sectionType}`);
     }
+};
 
-    return { status: 'SAVED', sectionType, message: `Sekcja ${sectionType} zapisana pomyślnie.` };
+/**
+ * ... (performAllSectionSaves i handler bez zmian w logice) ...
+ */
+const performAllSectionSaves = async (dbClient, chapterId, chapterNumber, currentTimestamp, rawVersionTimestamp, fullJsonData) => {
+    
+    const results = {};
+    
+    const sections = [
+        { type: 'CHARACTERS', data: fullJsonData },
+        { type: 'WORLD', data: fullJsonData },
+        { type: 'SCENES', data: fullJsonData }
+    ];
+    
+    let charactersCount = 0;
+    let worldName = 'N/A';
+    let scenesCount = 0;
+
+    // 1. Zapis sekcji granularnych
+    for (const section of sections) {
+        try {
+            const result = await processSectionUpdate(dbClient, chapterId, chapterNumber, currentTimestamp, rawVersionTimestamp, section.data, section.type);
+            results[section.type] = { success: true, result: result };
+            
+            // Zbieranie statystyk
+            if (section.type === 'CHARACTERS') {
+                charactersCount = result.count;
+            } else if (section.type === 'WORLD') {
+                worldName = result.name;
+            } else if (section.type === 'SCENES') {
+                scenesCount = result.count;
+            }
+        } catch (error) {
+            console.error(`Błąd zapisu sekcji ${section.type}:`, error);
+            results[section.type] = { success: false, error: error.message };
+        }
+    }
+    
+    // 2. Finalny zapis SUMMARY
+    const summaryData = {
+        summary: fullJsonData.streszczenie_szczegolowe, 
+        title: fullJsonData.tytul_rozdzialu,
+        stats: fullJsonData.dane_statystyczne,
+        sceny_count: scenesCount,
+        world_name: worldName,
+        characters_count: charactersCount,
+        characters_list: fullJsonData.postacie ? fullJsonData.postacie.map(p => p.imie) : []
+    };
+    
+    try {
+        await processSectionUpdate(dbClient, chapterId, chapterNumber, currentTimestamp, rawVersionTimestamp, summaryData, 'SUMMARY');
+        results['SUMMARY'] = { success: true, result: { status: 'SAVED', sectionType: 'SUMMARY' } };
+    } catch (error) {
+        console.error('Błąd finalnego zapisu SUMMARY:', error);
+        results['SUMMARY'] = { success: false, error: error.message };
+    }
+    
+    return { 
+        STATUS: 'AUTO_SAVE_COMPLETED',
+        results: results
+    };
 };
 
 
 // =======================================================
 // HANDLER GŁÓWNY (Dwa kroki)
-// ... (logika bez zmian) ...
 // =======================================================
 
 export const handler = async (event) => {
     
-    // Usunięto Access-Control-Allow-* i pozostawiono tylko Content-Type
     const headers = { 
         "Content-Type": "application/json"
     };
@@ -202,29 +332,16 @@ export const handler = async (event) => {
         // --- KROK 2/3: Auto Save Logic (Combined Save) ---
         if (requestBody.fullAutoSaveData) {
             const { rawVersionTimestamp, numer_rozdzialu, ...fullJsonData } = requestBody.fullAutoSaveData;
-            const chapterId = `CH-${numer_rozdzialu}`;
-            const currentTimestamp = new Date().toISOString(); 
             
-            // Logika auto-zapisu musi przekazać wszystkie dane do finalnego SUMMARY
-            const analysisResult = await performAllSectionSaves(db, chapterId, numer_rozdzialu, currentTimestamp, rawVersionTimestamp, fullJsonData);
-            
-            // Poprawiamy finalny zapis SUMMARY, aby upewnić się, że LLM_Chapters_V2 ma pełne statystyki
-            if (analysisResult.results.SUMMARY.success) {
-                 const summaryData = {
-                    summary: fullJsonData.streszczenie_szczegolowe, 
-                    title: fullJsonData.tytul_rozdzialu,
-                    stats: fullJsonData.dane_statystyczne,
-                    sceny_count: analysisResult.results.SCENES?.count || 0,
-                    world_name: analysisResult.results.WORLD?.name || 'N/A',
-                    characters_count: analysisResult.results.CHARACTERS?.count || 0,
-                    characters_list: fullJsonData.postacie.map(p => p.imie)
-                };
-                // Ponownie uruchamiamy zapis SUMMARY z pełnymi danymi
-                await processSectionUpdate(db, chapterId, numer_rozdzialu, currentTimestamp, rawVersionTimestamp, summaryData, 'SUMMARY');
+            const parsedChapterNumber = parseInt(numer_rozdzialu);
+            if (isNaN(parsedChapterNumber)) {
+                 throw new Error('Numer rozdziału musi być poprawną liczbą.');
             }
             
-            // Ponownie pobieramy wyniki, aby uwzględnić finalny zapis SUMMARY
-            const finalResults = await performAllSectionSaves(db, chapterId, numer_rozdzialu, currentTimestamp, rawVersionTimestamp, fullJsonData);
+            const chapterId = `CH-${parsedChapterNumber}`;
+            const currentTimestamp = new Date().toISOString(); 
+            
+            const finalResults = await performAllSectionSaves(db, chapterId, parsedChapterNumber, currentTimestamp, rawVersionTimestamp, fullJsonData);
 
             return { statusCode: 200, headers, body: JSON.stringify(finalResults) };
         }
