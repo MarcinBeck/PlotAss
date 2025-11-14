@@ -416,5 +416,43 @@ async function renderWorldDetails(data) {
 
 // Renderowanie detali postaci (Ewolucja) - Przekierowanie do nowej funkcji
 // ...
-// (Pozostała część pliku details_loader.js bez zmian)
+// (Poprawiony kod zawierający wszystkie inne funkcje)
 // ...
+
+// === FUNKCJA GŁÓWNA LOADERA ===
+export async function loadDetailsPage(id, type) {
+    // Zabezpieczony odczyt nagłówka
+    const pageTitle = document.getElementById('page-title');
+    if (pageTitle) pageTitle.textContent = `Ładowanie szczegółów ${type}...`;
+    
+    const contentContainerId = `${type}-details-content`;
+
+    try {
+        if (type === 'chapter') {
+            const details = await fetchChapterDetails(id);
+            // Czekamy na zakończenie renderowania (w tym asynchronicznego pobierania postaci)
+            await renderChapterDetails(details); 
+            
+        } else if (type === 'character') {
+            const details = await fetchCharacterDetails(id);
+            // FIX: Czekamy na asynchroniczne renderowanie
+            await renderCharacterDetails(details);
+        } else if (type === 'world') {
+            const details = await fetchWorldDetails(id);
+            // FIX: Czekamy na asynchroniczne renderowanie
+            await renderWorldDetails(details);
+        } else {
+             renderError(contentContainerId, 'Nieznany typ detali.');
+        }
+    } catch (error) {
+        console.error(`Błąd ładowania detali ${type}:`, error);
+        if (type === 'chapter') {
+             const grid = document.getElementById('chapter-details-grid');
+             if (grid) grid.innerHTML = `<p style="color: red; padding: 20px;">BŁĄD: ${error.message}</p>`;
+        } else {
+             // W character_details.html kontener główny jest teraz #character-details-content
+             const container = document.getElementById('character-main-info-grid') || document.getElementById('world-main-info-grid') || document.getElementById(contentContainerId);
+             if (container) container.innerHTML = `<p style="color: red; padding: 20px;">BŁĄD: ${error.message}</p>`;
+        }
+    }
+}
