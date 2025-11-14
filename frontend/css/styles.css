@@ -210,12 +210,46 @@ h1 { margin: 0; font-size: 24px; }
     margin-bottom: 30px;
 }
 
-#chapter-history-container {
+/* Kontener dla poziomej listy postaci (nowa sekcja) */
+#world-characters-container, #chapter-history-container {
+    padding: 10px 0;
+}
+
+#world-char-list-flex, #chapter-history-container {
     display: flex; /* Układ poziomy */
     flex-direction: row;
     overflow-x: auto; /* Włącz scrollowanie poziome */
     gap: 20px;
-    padding: 10px 0;
+}
+
+.character-box-horizontal-world {
+    min-width: 200px;
+    max-width: 200px;
+    flex-shrink: 0; 
+    
+    /* Style boxu */
+    padding: 12px;
+    margin-bottom: 0; 
+    border: 1px solid #eee;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    background-color: #ffffff;
+    
+    text-decoration: none; 
+    color: inherit;
+    display: block;
+}
+
+.character-box-horizontal-world p {
+    margin: 2px 0; 
+    font-size: 0.9em;
+    color: #444;
+}
+.character-box-horizontal-world strong {
+    font-weight: bold !important; 
+    color: #007bff !important;     
+    font-size: 1em !important;     
+    display: block !important;    
 }
 
 .chapter-history-block-vertical {
