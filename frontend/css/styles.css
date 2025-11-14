@@ -143,7 +143,7 @@ h1 { margin: 0; font-size: 24px; }
 
 .page-container h2 {
     color: #007bff;
-    /* ZMIANA: Usuwamy linię pod głównym nagłówkiem strony */
+    /* ZMIANA: Usunięta linia pod głównym nagłówkiem strony */
     border-bottom: none; 
     padding-bottom: 10px;
     margin-bottom: 25px;
@@ -171,8 +171,8 @@ h1 { margin: 0; font-size: 24px; }
 .title-bar {
     display: flex;
     align-items: center;
-    /* ZMIANA: Usuwamy linię pod title-bar (nagłówek rozdziału) */
-    border-bottom: none; 
+    /* PRZYWRÓCENIE: Niebieska linia pod tytułem rozdziału */
+    border-bottom: 2px solid #007bff; 
     padding-bottom: 10px;
     margin-bottom: 10px;
 }
@@ -202,7 +202,7 @@ h1 { margin: 0; font-size: 24px; }
     margin-top: 30px; 
 }
 
-/* ZMIANA: Usuwamy ramki i cień z głównych boksów (Postacie, Sceny, Świat) */
+/* ZMIANA: Usuwamy ramki i cień z głównych boksów */
 .sidebar-box {
     padding: 15px;
     border: none;
@@ -212,11 +212,13 @@ h1 { margin: 0; font-size: 24px; }
 
 
 .sidebar-box h4 {
-    color: #007bff;
+    /* ZMIANA: Nagłówki sekcji na styl STRESZCZENIE (czarny, 1.5em) */
+    color: #333; 
     margin-top: 0;
-    /* ZMIANA: Usuwamy linię pod nagłówkami sekcji (Postacie, Sceny, Świat) */
+    /* ZMIANA: Usunięta linia pod nagłówkami sekcji */
     border-bottom: none; 
     padding-bottom: 5px;
+    font-size: 1.5em;
 }
 
 /* Styl dla Streszczenia (Pełna treść) */
@@ -285,10 +287,10 @@ h1 { margin: 0; font-size: 24px; }
     color: inherit; 
 }
 
-/* Normalizacja strong, aby zapobiec konfliktom */
+/* ZMIANA: Nazwy konkretnych elementów na niebiesko */
 .char-detail-item strong {
     font-weight: bold !important; 
-    color: inherit !important;     
+    color: #007bff !important;     
     font-size: 1em !important;     
     display: inline !important;    
 }
@@ -300,10 +302,10 @@ h1 { margin: 0; font-size: 24px; }
     margin: 2px 0 8px 0; 
 }
 
-/* Styl dla tytułu Sceny */
+/* ZMIANA: Styl dla tytułu Sceny - Zapewniamy niebieski i block display */
 .scene-item strong {
     font-weight: bold;
-    color: #01579b; 
+    color: #007bff; 
     font-size: 1em;
     display: block; 
     margin-bottom: 3px;
