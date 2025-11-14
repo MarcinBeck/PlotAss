@@ -196,6 +196,10 @@ async function renderChapterDetails(data) {
 async function renderCharacterDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     
+    // --- Nowe: Pobranie wszystkich rozdziałów do uzyskania streszczeń ---
+    const dashboardData = await fetchDashboardData();
+    const chapterSummaries = dashboardData?.chapters?.latestChapters || [];
+    
     const pageTitle = document.getElementById('page-title');
     if (pageTitle) pageTitle.textContent = `Szczegóły Postaci: ${latestDetails.IMIE}`;
     
@@ -204,11 +208,9 @@ async function renderCharacterDetails(data) {
     
     // --- Ustawienie linku edycji ---
     const editLink = document.getElementById('edit-link');
-    // Zakładamy, że link edycji będzie prowadził do strony opartej na ID postaci
     if (editLink) editLink.href = `character_add.html?id=${latestDetails.ID}`; 
 
     // --- 1. Render Głównych Danych ---
-    // Główna zawartość jest renderowana do #character-details-content (obok zdjęcia)
     mainContent.innerHTML = `
         <h3 style="margin: 0; font-size: 1.5em; color: #333;">Główne Dane</h3>
         <p style="margin-top: 10px;"><strong>ID Postaci:</strong> ${latestDetails.ID}</p>
@@ -234,64 +236,68 @@ async function renderCharacterDetails(data) {
     historyContainer.innerHTML = '';
     
     for (const chapter of chaptersHistory) {
-        const chapterNumber = chapter.chapterId.replace('CH-', '');
+        const chapterId = chapter.chapterId;
+        const chapterNumber = chapterId.replace('CH-', '');
+        
+        // Znajdowanie streszczenia
+        const chapterDetail = chapterSummaries.find(c => c.CHAPTER_ID === chapterId);
+        const summary = chapterDetail?.SUMMARY || 'Brak streszczenia dla tego rozdziału.';
         
         // Bierzemy najnowszą wersję w ramach TEGO rozdziału
         const latestChapterVersion = chapter.versions.sort((a, b) => new Date(b.versionTimestamp) - new Date(a.versionTimestamp))[0];
         
-        let scenesHtml = ``;
-        
-        // FIX: Deklarujemy 'scenes' poza blokiem try/catch, aby była dostępna do licznika
+        let sceneBoxesHtml = ''; 
         let scenes = []; 
         
         try {
             // Asynchroniczne ładowanie scen dla każdego rozdziału
             scenes = await fetchChapterScenes(chapter.chapterId);
             
+            // Render Sceny jako osobne, zwinięte ramki (poza boxem rozdziału)
             if (scenes.length > 0) {
-                scenesHtml = `<ul class="scene-list-compact">`;
                 scenes.forEach(scene => {
-                    // Sceny jako elementy z mechanizmem zwijania/rozwijania
-                    scenesHtml += `
-                        <li>
+                    // Render każdej sceny jako osobną, zwiniętą ramkę
+                    sceneBoxesHtml += `
+                        <div class="char-detail-item scene-item-standalone">
                             <details>
-                                <summary style="cursor: pointer; color: #333; font-weight: 500;">${scene.TYTUL_SCENY || 'Scena Bez Tytułu'}</summary>
-                                <p style="font-size: 0.85em; margin: 5px 0 0 10px;">Opis: ${scene.OPIS_SCENY.substring(0, 100)}...</p>
+                                <summary style="cursor: pointer; color: #007bff; font-weight: 500;">
+                                    ${scene.TYTUL_SCENY || 'Scena Bez Tytułu'}
+                                </summary>
+                                <p class="scene-description" style="margin-top: 5px;">
+                                    ${scene.OPIS_SCENY || 'Brak opisu.'}
+                                </p>
                             </details>
-                        </li>
+                        </div>
                     `;
                 });
-                scenesHtml += `</ul>`;
-            } else {
-                scenesHtml = `<p style="font-size: 0.9em; margin-left: 10px;">Brak zidentyfikowanych scen w tym rozdziale.</p>`;
             }
         } catch (error) {
-            scenesHtml = `<p style="color: red; font-size: 0.9em;">Błąd ładowania scen: ${error.message.substring(0, 50)}...</p>`;
-            scenes = []; // Zapewniamy, że scenes jest zdefiniowane jako pusta tablica w razie błędu.
+            sceneBoxesHtml = `<p style="color: red; font-size: 0.9em;">Błąd ładowania scen: ${error.message.substring(0, 50)}...</p>`;
+            scenes = []; 
         }
 
-
         // Renderowanie Pojedynczego Boksu Rozdziału (Poziomego)
-        const boxHtml = `
-            <div class="chapter-box-horizontal">
-                <h5>ROZDZIAŁ ${chapterNumber}</h5>
-                
-                <details open>
-                    <summary style="font-weight: bold; cursor: pointer; color: #007bff;">Detale Postaci w Rozdziale</summary>
-                    <p style="margin-top: 5px; font-size: 0.9em;">
-                        **Rola:** ${latestChapterVersion.rola_w_rozdziale} <br>
-                        **Status (wersja):** ${latestChapterVersion.szczegoly?.status || 'N/A'}
-                    </p>
-                </details>
+        const fullChapterBlock = `
+            <div class="chapter-history-block-vertical">
+                <div class="chapter-box-horizontal">
+                    <h5>ROZDZIAŁ ${chapterNumber}</h5>
+                    
+                    <p class="chapter-summary-text">${summary}</p>
+                    
+                    <hr class="chapter-separator-line">
 
-                <h6 style="font-size: 1em; margin-top: 15px; margin-bottom: 5px; font-weight: 600;">Sceny (tytuły):</h6>
-                <details>
-                    <summary style="font-weight: bold; cursor: pointer; color: #333;">Pokaż ${scenes.length} Scen</summary>
-                    ${scenesHtml}
-                </details>
+                    <div class="chapter-char-context">
+                        <p><strong>Rola:</strong> ${latestChapterVersion.rola_w_rozdziale}</p>
+                        <p><strong>Status:</strong> ${latestChapterVersion.szczegoly?.status || 'N/A'}</p>
+                    </div>
+                </div>
+                
+                <div class="chapter-scenes-list-wrapper">
+                    ${sceneBoxesHtml}
+                </div>
             </div>
         `;
-        historyContainer.innerHTML += boxHtml;
+        historyContainer.innerHTML += fullChapterBlock;
     }
 }
 
