@@ -171,7 +171,6 @@ h1 { margin: 0; font-size: 24px; }
 .title-bar {
     display: flex;
     align-items: center;
-    /* PRZYWRÓCONA: Niebieska linia pod tytułem rozdziału */
     border-bottom: 2px solid #007bff; 
     padding-bottom: 10px;
     margin-bottom: 10px;
@@ -195,12 +194,61 @@ h1 { margin: 0; font-size: 24px; }
 }
 
 #sidebar-analysis {
-    /* KLUCZOWA ZMIANA: Nierówny podział kolumn: 25% Postacie, 50% Sceny, 25% Świat */
+    /* Nierówny podział kolumn: 25% Postacie, 50% Sceny, 25% Świat */
     display: grid;
     grid-template-columns: 1fr 2fr 1fr; 
     gap: 20px;
     margin-top: 30px; 
 }
+
+/* === DODANE STYLE DLA character_details.html === */
+#character-main-info-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr; /* Obrazek 200px, dane reszta */
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+#chapter-history-container {
+    display: flex; /* Układ poziomy */
+    flex-direction: row;
+    overflow-x: auto; /* Włącz scrollowanie poziome */
+    gap: 20px;
+    padding: 10px 0;
+}
+
+.chapter-box-horizontal {
+    min-width: 300px;
+    max-width: 300px;
+    flex-shrink: 0; 
+    
+    /* Style zbliżone do char-detail-item */
+    padding: 15px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    background-color: #fcfcfc;
+}
+
+.chapter-box-horizontal h5 {
+    margin: 0 0 10px 0;
+    color: #007bff;
+    font-size: 1.1em;
+    border-bottom: 1px dashed #ccc;
+    padding-bottom: 5px;
+}
+
+.scene-list-compact {
+    padding-left: 0;
+    list-style: none;
+}
+.scene-list-compact li {
+    font-size: 0.9em;
+    padding: 2px 0;
+    list-style-type: none;
+}
+/* === KONIEC DODANYCH STYLI DLA character_details.html === */
+
 
 /* ZMIANA 3: Zmniejszamy padding góry, aby nagłówki były bliżej ramek (5px) */
 .sidebar-box {
@@ -296,11 +344,11 @@ h1 { margin: 0; font-size: 24px; }
     display: inline !important;    
 }
 
-/* ZMIANA 1 & 2: Stylizacja metadanych scen (ID/data) na kolor szary i większy odstęp */
+/* Stylizacja metadanych scen (ID/data) na kolor szary i większy odstęp */
 .metadata-line {
-    font-size: 0.9em; /* Ujednolicone z metadata rozdziału */
-    color: #888; /* Ujednolicone z metadata rozdziału */
-    margin: 2px 0 15px 0; /* Większy odstęp (15px) między ID/datą a opisem sceny */
+    font-size: 0.9em; 
+    color: #888; 
+    margin: 2px 0 15px 0; 
 }
 
 /* Styl dla tytułu Sceny - Zapewniamy niebieski i block display */
