@@ -182,10 +182,13 @@ async function renderChapterDetails(data) {
     const worldInfoDetail = document.getElementById('world-info-detail');
     const currentWorld = worldDetails?.latestDetails || {ID: chapter.WORLD_NAME || 'N/A', NAZWA: chapter.WORLD_NAME || 'N/A', OPIS: 'Brak detali w bazie.'};
 
+    // ZMIANA: Dodajemy char-detail-item do sekcji świata, aby uzyskać analogiczny styl
     if (worldInfoDetail) worldInfoDetail.innerHTML = `
-        <p><strong>Węzeł:</strong> ${currentWorld.NAZWA}</p>
-        <p><strong>Opis:</strong> ${currentWorld.OPIS || 'Brak opisu.'}</p>
-        <a href="world_details.html?id=${currentWorld.ID}">Zobacz Historię Węzła &rarr;</a>
+        <div class="char-detail-item" style="margin-bottom: 0;">
+            <p><strong>Węzeł:</strong> ${currentWorld.NAZWA}</p>
+            <p><strong>Opis:</strong> ${currentWorld.OPIS || 'Brak opisu.'}</p>
+            <a href="world_details.html?id=${currentWorld.ID}">Zobacz Historię Węzła &rarr;</a>
+        </div>
     `;
 }
 
