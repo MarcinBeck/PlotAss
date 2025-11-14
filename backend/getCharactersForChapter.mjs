@@ -87,14 +87,14 @@ const getCharactersForChapter = async (chapterId) => {
             if (versions.length > 0) {
                 // Sortujemy, aby znaleźć najnowszą wersję w ramach TEGO rozdziału
                 // Używamy ostatniego (najnowszego) wpisu dla tego rozdziału.
-                const latestEntry = versions.sort((a, b) => new Date(b.DATA_WPROWADADZENIA) - new Date(a.DATA_WPROWADZENIA))[0];
+                const latestEntry = versions.sort((a, b) => new Date(b.DATA_WPROWADZENIA) - new Date(a.DATA_WPROWADZENIA))[0];
                 
                 // Dodajemy postać z jej rolą i najnowszym statusem z głównego rekordu
                 charactersInChapter.push({
                     ID: char.ID,
                     IMIE: char.IMIE,
                     ROLA_W_ROZDZIALE: latestEntry.ROLA_W_ROZDZIALE,
-                    STATUS: char.SZCZEGOLY?.status || 'N/A', // Najnowszy status z głównego rekordu
+                    STATUS: latestEntry.STATUS || 'N/A', // Status z najnowszej wersji dla TEGO rozdziału
                     SOURCE_CHAPTER_ID: chapterId
                 });
             }
