@@ -230,7 +230,7 @@ const processSectionUpdate = async (dbClient, chapterId, chapterNumber, currentT
                 TITLE: sectionData.title,
                 CONTENT: rawChapter.CONTENT, 
                 STATUS: 'ANALYZED',
-                SUMMARY: sectionData.summary.substring(0, 500),
+                SUMMARY: sectionData.summary,
                 DANE_STATYSTYCZNE: sectionData.stats,
                 SCENES_COUNT: sectionData.sceny_count || 0,
                 WORLD_NAME: sectionData.world_name || 'N/A',
