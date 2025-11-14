@@ -202,7 +202,7 @@ h1 { margin: 0; font-size: 24px; }
     margin-top: 30px; 
 }
 
-/* ZMIANA 3: Zmniejszamy padding góry, aby nagłówki były bliżej ramek */
+/* ZMIANA 3: Zmniejszamy padding góry, aby nagłówki były bliżej ramek (5px) */
 .sidebar-box {
     padding: 5px 15px 15px 15px; 
     border: none;
@@ -212,12 +212,12 @@ h1 { margin: 0; font-size: 24px; }
 
 
 .sidebar-box h4 {
-    /* ZMIANA: Nagłówki sekcji na styl STRESZCZENIE (czarny, 1.5em) */
+    /* Nagłówki sekcji na styl STRESZCZENIE (czarny, 1.5em) */
     color: #333; 
     margin-top: 0;
     /* Usunięta linia pod nagłówkami sekcji */
     border-bottom: none; 
-    padding-bottom: 0px; /* Zmniejszony padding */
+    padding-bottom: 0px; 
     font-size: 1.5em;
 }
 
@@ -298,8 +298,8 @@ h1 { margin: 0; font-size: 24px; }
 
 /* ZMIANA 1 & 2: Stylizacja metadanych scen (ID/data) na kolor szary i większy odstęp */
 .metadata-line {
-    font-size: 0.9em; /* Zwiększona czcionka (jak metadata rozdziału) */
-    color: #888; /* Kolor szary (jak metadata rozdziału) */
+    font-size: 0.9em; /* Ujednolicone z metadata rozdziału */
+    color: #888; /* Ujednolicone z metadata rozdziału */
     margin: 2px 0 15px 0; /* Większy odstęp (15px) między ID/datą a opisem sceny */
 }
 
