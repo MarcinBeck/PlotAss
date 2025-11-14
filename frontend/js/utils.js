@@ -91,7 +91,7 @@ function renderReviewSections(parsedJsonData, rawChapterDetails) {
     document.getElementById('review-chapter-display').textContent = rawChapterDetails.title;
     document.getElementById('review-version-timestamp').textContent = rawChapterDetails.versionTimestamp;
     
-    document.getElementById('review-summary-text').textContent = (streszczenie_szczegolowe || '').substring(0, 500) + '...';
+    document.getElementById('review-summary-text').textContent = streszczenie_szczegolowe || '';
     document.getElementById('review-words-count').textContent = dane_statystyczne?.liczba_wyrazow || 'N/A';
     
     const charList = document.getElementById('review-character-list');
