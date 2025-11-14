@@ -171,6 +171,7 @@ h1 { margin: 0; font-size: 24px; }
 .title-bar {
     display: flex;
     align-items: center;
+    /* PRZYWRÓCONA: Niebieska linia pod tytułem rozdziału */
     border-bottom: 2px solid #007bff; 
     padding-bottom: 10px;
     margin-bottom: 10px;
@@ -217,12 +218,17 @@ h1 { margin: 0; font-size: 24px; }
     padding: 10px 0;
 }
 
-.chapter-box-horizontal {
-    min-width: 300px;
-    max-width: 300px;
+.chapter-history-block-vertical {
+    min-width: 350px; /* Szerokość bloku, aby wyglądało to dobrze w poziomie */
+    max-width: 350px;
     flex-shrink: 0; 
-    
-    /* Style zbliżone do char-detail-item */
+    display: flex;
+    flex-direction: column; /* Stack box and scenes vertically */
+    gap: 10px; /* Gap między boxem rozdziału a listą scen */
+}
+
+.chapter-box-horizontal {
+    /* Style dla boxu z podsumowaniem rozdziału i kontekstem postaci */
     padding: 15px;
     border: 1px solid #eee;
     border-radius: 8px;
@@ -231,24 +237,62 @@ h1 { margin: 0; font-size: 24px; }
 }
 
 .chapter-box-horizontal h5 {
-    margin: 0 0 10px 0;
+    /* Title style (ROZDZIAŁ X) */
+    margin: 0;
     color: #007bff;
     font-size: 1.1em;
-    border-bottom: 1px dashed #ccc;
     padding-bottom: 5px;
 }
 
-.scene-list-compact {
-    padding-left: 0;
-    list-style: none;
-}
-.scene-list-compact li {
+.chapter-summary-text {
     font-size: 0.9em;
-    padding: 2px 0;
-    list-style-type: none;
+    line-height: 1.4;
+    margin-top: 5px; /* Spacja pod tytułem */
+    margin-bottom: 5px; /* Spacja nad separatorem */
+    font-style: italic;
+    color: #555;
 }
-/* === KONIEC DODANYCH STYLI DLA character_details.html === */
 
+.chapter-separator-line {
+    border: 0;
+    height: 1px;
+    background-color: #ddd; /* Cienka, szara linia */
+    margin: 5px 0 10px 0; /* Spacja nad i pod separatorem */
+}
+
+.chapter-char-context p {
+    margin: 0 0 3px 0;
+    font-size: 0.9em;
+}
+
+/* Nowy styl dla ramek scen pod boxem rozdziału */
+.chapter-scenes-list-wrapper .char-detail-item {
+    margin-bottom: 5px; /* Mniejszy margines między ramkami scen */
+    padding: 8px 12px; /* Mniejszy padding dla ramki sceny */
+    background-color: #ffffff; /* Białe tło dla kontrastu */
+}
+
+.chapter-scenes-list-wrapper .char-detail-item:last-child {
+    margin-bottom: 0;
+}
+
+.chapter-scenes-list-wrapper details {
+    padding-left: 0; 
+}
+/* Nadpisanie niebieskiego koloru dla tytułów scen w trybie 'details' */
+.chapter-scenes-list-wrapper details summary {
+    color: #007bff !important;
+}
+
+/* Styl dla opisu sceny wewnątrz ramki */
+.chapter-scenes-list-wrapper .scene-description {
+    font-size: 0.85em;
+    margin: 5px 0 0 0 !important;
+    padding-top: 5px;
+    border-top: 1px dashed #eee;
+}
+
+/* === KONIEC DODANYCH STYLI DLA character_details.html === */
 
 /* ZMIANA 3: Zmniejszamy padding góry, aby nagłówki były bliżej ramek (5px) */
 .sidebar-box {
@@ -346,9 +390,9 @@ h1 { margin: 0; font-size: 24px; }
 
 /* Stylizacja metadanych scen (ID/data) na kolor szary i większy odstęp */
 .metadata-line {
-    font-size: 0.9em; 
-    color: #888; 
-    margin: 2px 0 15px 0; 
+    font-size: 0.9em; /* Ujednolicone z metadata rozdziału */
+    color: #888; /* Ujednolicone z metadata rozdziału */
+    margin: 2px 0 15px 0; /* Większy odstęp (15px) między ID/datą a opisem sceny */
 }
 
 /* Styl dla tytułu Sceny - Zapewniamy niebieski i block display */
