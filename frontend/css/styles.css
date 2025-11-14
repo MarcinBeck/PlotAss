@@ -202,8 +202,8 @@ h1 { margin: 0; font-size: 24px; }
     margin-top: 30px; 
 }
 
-/* === DODANE STYLE DLA character_details.html === */
-#character-main-info-grid {
+/* === DODANE STYLE DLA character_details.html & world_details.html === */
+#character-main-info-grid, #world-main-info-grid {
     display: grid;
     grid-template-columns: 200px 1fr; /* Obrazek 200px, dane reszta */
     gap: 30px;
@@ -292,7 +292,8 @@ h1 { margin: 0; font-size: 24px; }
     border-top: 1px dashed #eee;
 }
 
-/* === KONIEC DODANYCH STYLI DLA character_details.html === */
+/* === KONIEC DODANYCH STYLI DLA character_details.html & world_details.html === */
+
 
 /* ZMIANA 3: Zmniejszamy padding góry, aby nagłówki były bliżej ramek (5px) */
 .sidebar-box {
