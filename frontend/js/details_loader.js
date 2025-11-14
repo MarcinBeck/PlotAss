@@ -192,7 +192,7 @@ async function renderChapterDetails(data) {
     `;
 }
 
-// ZMIANA: CAŁKOWICIE PRZEPISANA FUNKCJA renderCharacterDetails
+// ZMIANA: POPRAWIONA FUNKCJA renderCharacterDetails (ASYNC)
 async function renderCharacterDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     
@@ -291,11 +291,6 @@ async function renderCharacterDetails(data) {
     }
 }
 
-// Renderowanie detali postaci (Ewolucja) - Przekierowanie do nowej funkcji
-function renderCharacterDetails(data) {
-    return renderCharacterDetails(data);
-}
-
 // Renderowanie detali świata (Ewolucja)
 function renderWorldDetails(data) {
     const { latestDetails, chaptersHistory } = data;
@@ -368,7 +363,7 @@ export async function loadDetailsPage(id, type) {
             
         } else if (type === 'character') {
             const details = await fetchCharacterDetails(id);
-            // Używamy nowej implementacji renderCharacterDetails
+            // FIX: Należy czekać (await) na asynchroniczne renderowanie
             await renderCharacterDetails(details);
         } else if (type === 'world') {
             const details = await fetchWorldDetails(id);
