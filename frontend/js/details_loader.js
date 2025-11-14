@@ -241,9 +241,12 @@ async function renderCharacterDetails(data) {
         
         let scenesHtml = ``;
         
+        // FIX: Deklarujemy 'scenes' poza blokiem try/catch, aby była dostępna do licznika
+        let scenes = []; 
+        
         try {
             // Asynchroniczne ładowanie scen dla każdego rozdziału
-            const scenes = await fetchChapterScenes(chapter.chapterId);
+            scenes = await fetchChapterScenes(chapter.chapterId);
             
             if (scenes.length > 0) {
                 scenesHtml = `<ul class="scene-list-compact">`;
@@ -263,7 +266,8 @@ async function renderCharacterDetails(data) {
                 scenesHtml = `<p style="font-size: 0.9em; margin-left: 10px;">Brak zidentyfikowanych scen w tym rozdziale.</p>`;
             }
         } catch (error) {
-            scenesHtml = `<p style="color: red; font-size: 0.9em;">Błąd ładowania scen.</p>`;
+            scenesHtml = `<p style="color: red; font-size: 0.9em;">Błąd ładowania scen: ${error.message.substring(0, 50)}...</p>`;
+            scenes = []; // Zapewniamy, że scenes jest zdefiniowane jako pusta tablica w razie błędu.
         }
 
 
@@ -282,7 +286,7 @@ async function renderCharacterDetails(data) {
 
                 <h6 style="font-size: 1em; margin-top: 15px; margin-bottom: 5px; font-weight: 600;">Sceny (tytuły):</h6>
                 <details>
-                    <summary style="font-weight: bold; cursor: pointer; color: #333;">Pokaż ${scenes.length || 0} Scen</summary>
+                    <summary style="font-weight: bold; cursor: pointer; color: #333;">Pokaż ${scenes.length} Scen</summary>
                     ${scenesHtml}
                 </details>
             </div>
@@ -363,7 +367,7 @@ export async function loadDetailsPage(id, type) {
             
         } else if (type === 'character') {
             const details = await fetchCharacterDetails(id);
-            // FIX: Należy czekać (await) na asynchroniczne renderowanie
+            // FIX: Czekamy na asynchroniczne renderowanie
             await renderCharacterDetails(details);
         } else if (type === 'world') {
             const details = await fetchWorldDetails(id);
