@@ -52,6 +52,34 @@ async function fetchChapterCharacters(chapterId) {
     return data.characters || [];
 }
 
+// NOWA FUNKCJA: Pobieranie postaci związanych z danym światem
+async function fetchCharactersForWorld(worldId) {
+    const data = await fetchDashboardData();
+    const allChapters = data?.chapters?.latestChapters || [];
+    const allCharacters = data?.characters?.list || [];
+
+    const worldNameUpperCase = worldId.toUpperCase();
+    const uniqueCharNames = new Set();
+
+    // 1. Zbieranie wszystkich unikalnych nazw postaci z rozdziałów powiązanych z tym światem
+    allChapters.forEach(chapter => {
+        if (chapter.WORLD_NAME?.toUpperCase() === worldNameUpperCase && Array.isArray(chapter.CHARACTERS_LIST)) {
+            chapter.CHARACTERS_LIST.forEach(charName => {
+                uniqueCharNames.add(charName);
+            });
+        }
+    });
+    
+    // 2. Filtrowanie globalnej listy postaci na podstawie zebranych nazw (IMIE)
+    const charactersInWorld = allCharacters.filter(char => {
+        return uniqueCharNames.has(char.IMIE);
+    });
+
+    // Sortowanie po imieniu
+    return charactersInWorld.sort((a, b) => (a.IMIE || '').localeCompare(b.IMIE || ''));
+}
+
+
 // Pobieranie detali świata (przez dedykowany endpoint)
 async function fetchWorldDetails(worldId) {
     const response = await fetch(`${DASHBOARD_API_ENDPOINT}?worldId=${worldId}`, { method: 'GET' });
@@ -316,6 +344,7 @@ async function renderWorldDetails(data) {
     
     const mainContent = document.getElementById('world-details-content');
     const historyContainer = document.getElementById('chapter-history-container');
+    const charactersContainer = document.getElementById('world-characters-container');
     
     // --- Ustawienie linku edycji ---
     const editLink = document.getElementById('edit-link');
@@ -331,7 +360,42 @@ async function renderWorldDetails(data) {
         <p><strong>Data Ost. Aktualizacji:</strong> ${new Date(latestDetails.DATA_DODANIA).toLocaleString('pl-PL')}</p>
     `;
 
-    // --- 2. Przetwarzanie i Renderowanie Historii Rozdziałów ---
+    // --- 2. NOWA SEKCJA: POSTACIE ZWIĄZANE Z WĘZŁEM ---
+    charactersContainer.innerHTML = `<p class="loading-text">Ładowanie postaci...</p>`;
+
+    try {
+        const characters = await fetchCharactersForWorld(latestDetails.ID);
+        
+        if (characters.length > 0) {
+            charactersContainer.innerHTML = '';
+            // Dodajemy kontener flexbox dla przewijania poziomego
+            const charListWrapper = document.createElement('div');
+            charListWrapper.id = 'world-char-list-flex';
+            
+            characters.forEach(char => {
+                const charBox = document.createElement('a');
+                charBox.href = `character_details.html?id=${char.ID}`;
+                // Używamy zdefiniowanej klasy CSS dla poziomego boxu z ramką
+                charBox.className = 'character-box-horizontal-world'; 
+                
+                charBox.innerHTML = `
+                    <strong>${char.IMIE}</strong>
+                    <p style="margin-bottom: 0;">Status: ${char.SZCZEGOLY?.status || 'N/A'}</p>
+                    <p>Typ: ${char.SZCZEGOLY?.typ || 'N/A'}</p>
+                `;
+                charListWrapper.appendChild(charBox);
+            });
+            charactersContainer.appendChild(charListWrapper);
+        } else {
+            charactersContainer.innerHTML = `<p>Brak postaci bezpośrednio związanych z tym węzłem w zapisanych rozdziałach.</p>`;
+        }
+    } catch (error) {
+        charactersContainer.innerHTML = `<p style="color: red;">BŁĄD ŁADOWANIA POSTACI: ${error.message.substring(0, 50)}...</p>`;
+    }
+    // --- KONIEC NOWEJ SEKCJI ---
+    
+
+    // --- 3. Przetwarzanie i Renderowanie Historii Rozdziałów ---
 
     // Sortowanie chronologiczne (najstarszy rozdział pierwszy: CH-1, CH-2...)
     chaptersHistory.sort((a, b) => {
@@ -416,7 +480,7 @@ async function renderWorldDetails(data) {
 
 // Renderowanie detali postaci (Ewolucja) - Przekierowanie do nowej funkcji
 // ...
-// (Poprawiony kod zawierający wszystkie inne funkcje)
+// (Pozostała część pliku details_loader.js bez zmian)
 // ...
 
 // === FUNKCJA GŁÓWNA LOADERA ===
