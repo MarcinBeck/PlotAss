@@ -192,63 +192,108 @@ async function renderChapterDetails(data) {
     `;
 }
 
-// Renderowanie detali postaci (Ewolucja)
-function renderCharacterDetails(data) {
+// ZMIANA: CAŁKOWICIE PRZEPISANA FUNKCJA renderCharacterDetails
+async function renderCharacterDetails(data) {
     const { latestDetails, chaptersHistory } = data;
     
     const pageTitle = document.getElementById('page-title');
     if (pageTitle) pageTitle.textContent = `Szczegóły Postaci: ${latestDetails.IMIE}`;
     
-    const content = document.getElementById('character-details-content');
+    const mainContent = document.getElementById('character-details-content');
+    const historyContainer = document.getElementById('chapter-history-container');
     
-    let html = `
-        <h3>Główne Dane Postaci</h3>
-        <p><strong>Imię:</strong> ${latestDetails.IMIE}</p>
+    // --- Ustawienie linku edycji ---
+    const editLink = document.getElementById('edit-link');
+    // Zakładamy, że link edycji będzie prowadził do strony opartej na ID postaci
+    if (editLink) editLink.href = `character_add.html?id=${latestDetails.ID}`; 
+
+    // --- 1. Render Głównych Danych ---
+    // Główna zawartość jest renderowana do #character-details-content (obok zdjęcia)
+    mainContent.innerHTML = `
+        <h3 style="margin: 0; font-size: 1.5em; color: #333;">Główne Dane</h3>
+        <p style="margin-top: 10px;"><strong>ID Postaci:</strong> ${latestDetails.ID}</p>
         <p><strong>Ostatni Status:</strong> ${latestDetails.SZCZEGOLY?.status || 'N/A'}</p>
         <p><strong>Typ:</strong> ${latestDetails.SZCZEGOLY?.typ || 'N/A'}</p>
         <p><strong>Data Ost. Zmiany:</strong> ${new Date(latestDetails.DATA_DODANIA).toLocaleString('pl-PL')}</p>
-        
-        <h3>Ewolucja i Historia w Rozdziałach</h3>
     `;
-    
+
+    // --- 2. Przetwarzanie i Renderowanie Historii Rozdziałów ---
+
+    // Sortowanie chronologiczne (najstarszy rozdział pierwszy: CH-1, CH-2...)
     chaptersHistory.sort((a, b) => {
         const numA = parseInt(a.chapterId.replace('CH-', ''));
         const numB = parseInt(b.chapterId.replace('CH-', ''));
-        return numB - numA; 
+        return numA - numB; 
     });
 
-    chaptersHistory.forEach(chapter => {
+    if (chaptersHistory.length === 0) {
+        historyContainer.innerHTML = `<p>Brak historii w rozdziałach.</p>`;
+        return;
+    }
+
+    historyContainer.innerHTML = '';
+    
+    for (const chapter of chaptersHistory) {
         const chapterNumber = chapter.chapterId.replace('CH-', '');
         
-        html += `<details class="analysis-section" open>
-            <summary style="font-weight: bold; cursor: pointer; padding: 5px 0; font-size: 1.1em; color: #007bff;">
-                ROZDZIAŁ ${chapterNumber} (${chapter.versions.length} Wersji)
-            </summary>
-            <ul class="version-list" style="list-style: none; padding-left: 0;">`;
+        // Bierzemy najnowszą wersję w ramach TEGO rozdziału
+        const latestChapterVersion = chapter.versions.sort((a, b) => new Date(b.versionTimestamp) - new Date(a.versionTimestamp))[0];
         
-        chapter.versions.sort((a, b) => new Date(b.versionTimestamp) - new Date(a.versionTimestamp)).forEach(version => {
-            const formattedDate = new Date(version.versionTimestamp).toLocaleString('pl-PL');
+        let scenesHtml = ``;
+        
+        try {
+            // Asynchroniczne ładowanie scen dla każdego rozdziału
+            const scenes = await fetchChapterScenes(chapter.chapterId);
             
-            html += `
-                <li>
-                    <details style="margin-top: 10px; border-left: 3px solid #28a745; padding-left: 10px;">
-                        <summary style="cursor: pointer;">
-                            Wpis z: <strong>${formattedDate}</strong>
-                        </summary>
-                        <p style="margin-top: 5px; font-size: 0.9em;">
-                            **Rola w Rozdziale:** ${version.rola_w_rozdziale} <br>
-                            **Typ:** ${version.szczegoly?.typ || 'N/A'} <br>
-                            **Status:** ${version.szczegoly?.status || 'N/A'}
-                        </p>
-                    </details>
-                </li>
-            `;
-        });
-        
-        html += `</ul></details>`;
-    });
+            if (scenes.length > 0) {
+                scenesHtml = `<ul class="scene-list-compact">`;
+                scenes.forEach(scene => {
+                    // Sceny jako elementy z mechanizmem zwijania/rozwijania
+                    scenesHtml += `
+                        <li>
+                            <details>
+                                <summary style="cursor: pointer; color: #333; font-weight: 500;">${scene.TYTUL_SCENY || 'Scena Bez Tytułu'}</summary>
+                                <p style="font-size: 0.85em; margin: 5px 0 0 10px;">Opis: ${scene.OPIS_SCENY.substring(0, 100)}...</p>
+                            </details>
+                        </li>
+                    `;
+                });
+                scenesHtml += `</ul>`;
+            } else {
+                scenesHtml = `<p style="font-size: 0.9em; margin-left: 10px;">Brak zidentyfikowanych scen w tym rozdziale.</p>`;
+            }
+        } catch (error) {
+            scenesHtml = `<p style="color: red; font-size: 0.9em;">Błąd ładowania scen.</p>`;
+        }
 
-    if (content) content.innerHTML = html;
+
+        // Renderowanie Pojedynczego Boksu Rozdziału (Poziomego)
+        const boxHtml = `
+            <div class="chapter-box-horizontal">
+                <h5>ROZDZIAŁ ${chapterNumber}</h5>
+                
+                <details open>
+                    <summary style="font-weight: bold; cursor: pointer; color: #007bff;">Detale Postaci w Rozdziale</summary>
+                    <p style="margin-top: 5px; font-size: 0.9em;">
+                        **Rola:** ${latestChapterVersion.rola_w_rozdziale} <br>
+                        **Status (wersja):** ${latestChapterVersion.szczegoly?.status || 'N/A'}
+                    </p>
+                </details>
+
+                <h6 style="font-size: 1em; margin-top: 15px; margin-bottom: 5px; font-weight: 600;">Sceny (tytuły):</h6>
+                <details>
+                    <summary style="font-weight: bold; cursor: pointer; color: #333;">Pokaż ${scenes.length || 0} Scen</summary>
+                    ${scenesHtml}
+                </details>
+            </div>
+        `;
+        historyContainer.innerHTML += boxHtml;
+    }
+}
+
+// Renderowanie detali postaci (Ewolucja) - Przekierowanie do nowej funkcji
+function renderCharacterDetails(data) {
+    return renderCharacterDetails(data);
 }
 
 // Renderowanie detali świata (Ewolucja)
@@ -323,7 +368,8 @@ export async function loadDetailsPage(id, type) {
             
         } else if (type === 'character') {
             const details = await fetchCharacterDetails(id);
-            renderCharacterDetails(details);
+            // Używamy nowej implementacji renderCharacterDetails
+            await renderCharacterDetails(details);
         } else if (type === 'world') {
             const details = await fetchWorldDetails(id);
             renderWorldDetails(details);
@@ -336,7 +382,9 @@ export async function loadDetailsPage(id, type) {
              const grid = document.getElementById('chapter-details-grid');
              if (grid) grid.innerHTML = `<p style="color: red; padding: 20px;">BŁĄD: ${error.message}</p>`;
         } else {
-             renderError(contentContainerId, error.message);
+             // W character_details.html kontener główny jest teraz #character-details-content
+             const container = document.getElementById('character-main-info-grid') || document.getElementById(contentContainerId);
+             if (container) container.innerHTML = `<p style="color: red; padding: 20px;">BŁĄD: ${error.message}</p>`;
         }
     }
 }
